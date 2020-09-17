@@ -1,0 +1,67 @@
+#
+# task: halo_statistics, code_tests, maps
+#
+task.task = maps
+task.verbosity = 1
+
+#
+# input data
+#
+
+basics.verbosity          = 3
+basics.input_file_prefix    = output/plot
+
+basics.first_step    = 0
+basics.last_step     = 30
+basics.step_interval = 1
+
+# particle,hydro,all
+basics.variable_type = particle
+
+#
+# map_projector
+#
+projector.verbosity = 3
+
+# (lo,hi) corners of the volume to be projected
+# 
+projector.lo_corner = -1.406179974
+projector.hi_corner = 1.1938200026
+
+# resolution of the map array
+projector.delta_x_map = 0.2
+
+# directions along which to do the projection 
+# 1=true, 0=false
+projector.projection_direction = 1 0 0
+
+# 
+# number and name of primitive variables to project
+# 
+projector.num_prim_vars = 3
+projector.name_prim_vars = density pressure
+
+# 
+# emissivity
+# 
+emissivity.verbosity = 3
+
+emissivity.plot_bremsstrahlung = false
+emissivity.num_brems_comp = 4
+emissivity.brems_spectrum = 0.5, 1.0, 2.0, 3.0
+emissivity.integrate_bremsstrahlung = false
+
+emissivity.plot_synchrotron = false
+emissivity.num_synch_comp   = 4
+emissivity.synch_spectrum   = 75.e0, 3.e2, 8.e2, 1.4e3
+emissivity.integrate_synchrotron = false
+
+emissivity.plot_inv_Compton = false
+emissivity.numInvCompComp   = 4
+emissivity.inv_Comp_spectrum= 1.e1, 1.e2, 1.e3, 1.e4, 1.e5, 1.e6, 1.e7, 1.e8, 1.e9 
+emissivity.integrate_inv_Compton = false
+
+emissivity.plot_pion_decay  = false
+emissivity.num_pion_decay_comp = 4
+emissivity.pion_decay_spectrum = 1.e2, 1.e3, 1.e4, 1.e5, 1.e6, 1.e7, 1.e8, 1.e9
+emissivity.integrate_pi_decay = false
