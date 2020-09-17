@@ -1,2 +1,2 @@
 # adsec
-Spectral Code based on the Astrophysical Plasma Emission Database
+Apecode is a code to compute astrophysical plasma spectral emission base on the AtomDB database. 
