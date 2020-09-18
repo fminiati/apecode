@@ -17,5 +17,6 @@ Both Aped and Apec use native float data for database objects but extract spectr
 defined datatype Real.
 
 Compilation requires cfitsio librieries given the fits file format of the AtomDB database.
-Execution currently requires the apec_3.0.9_51 files version of the database, namely the 
-one using the standard binning with 51 temeprature between 10^4 and 10^9 K.
+Execution requires obviously the database files. The code works seamlessly with either the
+traditional format using 51 temperature bins or the upgraded version with 201 temperature bins,
+between 10^4 and 10^9 K.
