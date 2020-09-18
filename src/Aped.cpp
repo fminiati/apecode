@@ -4,18 +4,19 @@
 #define READONLY 0 // options when opening a file
 
 #include <algorithm>
-#include "Aped.H"
-#include "Util.H"
-#include "FitsUtil.H"
+#include <cassert>
+#include "Aped.h"
+#include "Util.h"
+#include "FitsUtil.h"
 
-using namespace FitsUtil;
-using namespace APED;
+using namespace fm::fits_util;
+using namespace fm::aped;
 
 // full construtor
-void Aped::define(const string a_aped_path, const string a_version)
+void Aped::define(const std::string a_aped_path, const std::string a_version)
 {
-    const string apec_line_file = a_aped_path + "/apec_v" + a_version + "_line.fits";
-    const string apec_coco_file = a_aped_path + "/apec_v" + a_version + "_coco.fits";
+    const std::string apec_line_file = a_aped_path + "/apec_v" + a_version + "_line.fits";
+    const std::string apec_coco_file = a_aped_path + "/apec_v" + a_version + "_coco.fits";
 
     // open line file
     char comment[MAXSTRLEN];
@@ -83,7 +84,7 @@ void Aped::define(const string a_aped_path, const string a_version)
     assert(status == 0);
 
     // read parameters data: store temp(K) and dens read from HDUs below
-    vector<float> lkT;
+    std::vector<float> lkT;
     read_fits_column(f_line_ptr, lkT, "kT", num_rows);
     //read_fits_column(f_line_ptr,m_density ,"EDensity",num_rows);
     read_fits_column(f_line_ptr, m_num_elements_line, "NElement", num_rows);
@@ -95,7 +96,7 @@ void Aped::define(const string a_aped_path, const string a_version)
     read_fits_column(f_coco_ptr, m_num_pseudo, "NPseudo", num_rows);
 
     { // sanity check: same temperatures for line and cont emission
-        vector<float> ckT;
+        std::vector<float> ckT;
         read_fits_column(f_coco_ptr, ckT, "kT", num_rows);
         for (size_t i = 0; i < ckT.size(); ++i)
         {
@@ -120,14 +121,14 @@ void Aped::define(const string a_aped_path, const string a_version)
         fits_read_key(f_line_ptr, TDOUBLE, "TIME", &time, comment, &status);
         fits_read_key(f_line_ptr, TINT, "N_LINES", &num_lines, comment, &status);
         // sanity checks
-        //// std::cout << " num-L = " << num_lines << ", num L_hdu= " << m_num_lines.at(hdu-3) << endl;
-        //assert(num_lines==m_num_lines.at(hdu-3));
+        // std::cout << " num-L = " << num_lines << ", num L_hdu= " << m_num_lines.at(hdu-3) << endl;
+        // assert(num_lines==m_num_lines.at(hdu-3));
         // store temperature and density for this HDU
         m_temperatures.push_back(temperature);
         m_density.push_back(density);
 
-        vector<int> element, ion, upper_lev, lower_lev;
-        vector<float> lambda, lambda_err, epsilon, epsilon_err;
+        std::vector<int> element, ion, upper_lev, lower_lev;
+        std::vector<float> lambda, lambda_err, epsilon, epsilon_err;
         read_fits_column(f_line_ptr, lambda, "Lambda", num_lines);
         read_fits_column(f_line_ptr, lambda_err, "Lambda_Err", num_lines);
         read_fits_column(f_line_ptr, epsilon, "Epsilon", num_lines);
@@ -152,7 +153,7 @@ void Aped::define(const string a_aped_path, const string a_version)
         fits_read_key(f_coco_ptr, TINT, "NAXIS2", &num_rows, comment, &status);
 
         //
-        vector<int> Z, rmJ, num_cont, num_pseudo;
+        std::vector<int> Z, rmJ, num_cont, num_pseudo;
         read_fits_column(f_coco_ptr, Z, "Z", num_rows);
         read_fits_column(f_coco_ptr, rmJ, "rmJ", num_rows);
         read_fits_column(f_coco_ptr, num_cont, "N_Cont", num_rows);
@@ -164,7 +165,7 @@ void Aped::define(const string a_aped_path, const string a_version)
         assert(ctemperature == m_temperatures.at(hdu - 3));
 
         //
-        vector<vector<float>> enrg_cont(num_rows), continuum(num_rows), enrg_pseudo(num_rows), pseudo(num_rows);
+        std::vector<std::vector<float>> enrg_cont(num_rows), continuum(num_rows), enrg_pseudo(num_rows), pseudo(num_rows);
         for (int r = 0; r < num_rows; ++r)
         {
             enrg_cont[r].resize(num_cont[r]);
@@ -194,8 +195,8 @@ void Aped::define(const string a_aped_path, const string a_version)
             temp_record.elements[element[l]].ions[ion[l]].line_emissivity.push_back(epsilon[l]);
             temp_record.elements[element[l]].ions[ion[l]].lower_level.push_back(lower_lev[l]);
             temp_record.elements[element[l]].ions[ion[l]].upper_level.push_back(upper_lev[l]);
-            //temp_record.elements[element[l]].ions[ion[l]].line_energy_err    .push_back( keVToAngstrom/lambda_err[l] );
-            //temp_record.elements[element[l]].ions[ion[l]].line_emissivity_err.push_back( epsilon_err[l] );
+            // temp_record.elements[element[l]].ions[ion[l]].line_energy_err    .push_back( keVToAngstrom/lambda_err[l] );
+            // temp_record.elements[element[l]].ions[ion[l]].line_emissivity_err.push_back( epsilon_err[l] );
         }
 
         // parse continuum emission
@@ -209,8 +210,8 @@ void Aped::define(const string a_aped_path, const string a_version)
             temp_record.elements[Z[r]].ions[rmJ[r]].continuum = continuum[r];
             temp_record.elements[Z[r]].ions[rmJ[r]].pseudo_cont_energy = enrg_pseudo[r];
             temp_record.elements[Z[r]].ions[rmJ[r]].pseudo_cont = pseudo[r];
-            //      std::cout << " e_c size= " << enrg_cont.size() << ", n rows= " << num_cont[r] <<
-            //" tr-e_c size= " << temp_record.elements[Z[r]].ions[rmJ[r]].cont_energy.size()  << std::endl;
+            // std::cout << " e_c size= " << enrg_cont.size() << ", n rows= " << num_cont[r] <<
+            // " tr-e_c size= " << temp_record.elements[Z[r]].ions[rmJ[r]].cont_energy.size()  << std::endl;
         }
         assert(temp_record.elements.size() == NUM_APEC_ATOMS);
 
@@ -225,12 +226,12 @@ void Aped::define(const string a_aped_path, const string a_version)
 }
 
 /// continuum spectrum including pseudo continuum
-void Aped::emission_spectrum(vector<Real> &a_spectrum,
-                             const vector<Real> &a_energy,
-                             const list<ElementAbundance> &a_atom_abundances,
+void Aped::emission_spectrum(std::vector<Real> &a_spectrum,
+                             const std::vector<Real> &a_energy,
+                             const std::list<ElementAbundance> &a_atom_abundances,
                              const Real a_temperature,
                              const Real a_doppler_shift,
-                             const string a_line_broadening,
+                             const std::string a_line_broadening,
                              const bool a_line_emission,
                              const bool a_cont_emission) const
 {
@@ -253,7 +254,6 @@ void Aped::emission_spectrum(vector<Real> &a_spectrum,
         assert(a_temperature >= (Real)m_temperatures[it_lo] && a_temperature <= (Real)m_temperatures[it_hi]);
 
         // loop over all elements
-        //for (list<ElementAbundance>::const_iterator A=a_atom_abundances.begin(); A!=a_atom_abundances.end(); ++A)
         for (const auto &A : a_atom_abundances)
         {
             // loop over temp bins
@@ -267,18 +267,17 @@ void Aped::emission_spectrum(vector<Real> &a_spectrum,
                 if (a_line_emission)
                 {
                     // lines
-                    vector<Real> spectrum(a_spectrum.size(), 0);
+                    std::vector<Real> spectrum(a_spectrum.size(), 0);
                     ion_line_emission(spectrum, a_energy, A.atomic_number, 0, it, a_doppler_shift, a_line_broadening);
 
                     // thermal broadening
                     if (a_line_broadening == "convolution")
                     {
-                        //map<unsigned,Element>::const_iterator el=m_aped_data[it].elements.find(A.atomic_number);
                         const auto &el = m_aped_data[it].elements.find(A.atomic_number);
                         //             const Real atomic_mass= AMU_g*el->second.atomic_mass; //m_aped_data[it].elements[A->atomic_number].atomic_mass;
                         //             const Real sigma=sqrt(k_B*a_temperature/atomic_mass) / C_cm_s;
                         //             const Real ksize=(a_energy[1]-a_energy[0])/a_energy[0] / (sqrt(two)*sigma);
-                        const Real sqrt2_sigma = sqrt(2 * k_B * a_temperature / (AMU_g * el.second.atomic_mass)) / C_cm_s;
+                        const Real sqrt2_sigma = sqrt(2 * k_B * a_temperature / (AMU_g * el->second.atomic_mass)) / C_cm_s;
                         const Real Elo = one / (sqrt2_sigma);
                         const Real Ehi = a_energy[1] / a_energy[0] / (sqrt2_sigma);
                         const Real Eline = half * (Elo + Ehi);
@@ -289,13 +288,13 @@ void Aped::emission_spectrum(vector<Real> &a_spectrum,
                     }
 
                     // include abundance factor
-                    add(a_spectrum, spectrum, f * A->abundance);
+                    add(a_spectrum, spectrum, f * A.abundance);
                 }
                 //
                 if (a_cont_emission)
                 {
                     // continuum
-                    vector<Real> spectrum(a_spectrum.size(), 0);
+                    std::vector<Real> spectrum(a_spectrum.size(), 0);
                     ion_continuum_emission(spectrum,
                                            a_energy,
                                            A.atomic_number,
@@ -311,13 +310,13 @@ void Aped::emission_spectrum(vector<Real> &a_spectrum,
 }
 
 //
-void Aped::ion_line_emission(vector<Real> &a_spectrum,
-                             const vector<Real> &a_energy,
+void Aped::ion_line_emission(std::vector<Real> &a_spectrum,
+                             const std::vector<Real> &a_energy,
                              const int a_atomic_number,
                              const int a_rmJ,
                              const int a_temp_idx,
                              const Real a_doppler_shift,
-                             const string a_line_broadening) const
+                             const std::string a_line_broadening) const
 {
     // resize spectrum vector
     a_spectrum.resize(a_energy.size() - 1, 0);
@@ -326,15 +325,13 @@ void Aped::ion_line_emission(vector<Real> &a_spectrum,
     long num_elines = 0;
 
     // find the element at the input temperature bin
-    //map<unsigned,Element>::const_iterator
     if (const auto ei = m_aped_data[a_temp_idx].elements.find(a_atomic_number);
         ei != m_aped_data[a_temp_idx].elements.end())
     {
         const Element &atom = ei->second;
 
         // if ionization state (rmJ) == 0 then add up all ions, else select ionization state according to input
-        //map<unsigned,Ion>::const_iterator
-        const auto ii = a_rmJ == 0 ? atom.ions.begin() : atom.ions.find(a_rmJ);
+        auto ii = a_rmJ == 0 ? atom.ions.begin() : atom.ions.find(a_rmJ);
         for (; ii != atom.ions.end(); ++ii)
         {
             // set ion pointer
@@ -343,14 +340,13 @@ void Aped::ion_line_emission(vector<Real> &a_spectrum,
 
             // loop through energy of emission line
             //const auto j=ion.line_emissivity.begin();
-            for (const auto hn = ion.line_energy.begin(), j = ion.line_emissivity.begin(); hn != ion.line_energy.end(); ++hn, ++j)
+            for (auto hn = ion.line_energy.begin(), j = ion.line_emissivity.begin(); hn != ion.line_energy.end(); ++hn, ++j)
             {
                 // photon energy shifted by doppler effect
                 const Real e_line = (Real)(*hn) * (one + a_doppler_shift);
 
                 if (e_line >= a_energy.front() && e_line < a_energy.back())
                 {
-
                     ++num_elines;
 
                     // find e-bin
@@ -402,8 +398,8 @@ void Aped::ion_line_emission(vector<Real> &a_spectrum,
 }
 
 // continuum
-void Aped::ion_continuum_emission(vector<Real> &a_spectrum,
-                                  const vector<Real> &a_energy,
+void Aped::ion_continuum_emission(std::vector<Real> &a_spectrum,
+                                  const std::vector<Real> &a_energy,
                                   const int a_atomic_number,
                                   const int a_rmJ,
                                   const int a_temp_idx,
@@ -422,9 +418,9 @@ void Aped::ion_continuum_emission(vector<Real> &a_spectrum,
         if (const auto &it = atom.ions.find(a_rmJ); it != atom.ions.end())
         {
             // ion
-            const Ion &ion = it.second;
+            const Ion &ion = it->second;
             // shift spectra
-            vector<float> cnt_enrg_shifted(ion.cont_energy), psd_enrg_shifted(ion.pseudo_cont_energy);
+            std::vector<float> cnt_enrg_shifted(ion.cont_energy), psd_enrg_shifted(ion.pseudo_cont_energy);
             if (a_doppler_shift != 0.e0)
             {
                 for (auto &vi : cnt_enrg_shifted)
@@ -432,42 +428,19 @@ void Aped::ion_continuum_emission(vector<Real> &a_spectrum,
             }
             for (auto &vi : psd_enrg_shifted)
                 vi *= (one + a_doppler_shift);
-            //}
 
-            //
             linear_integrate(a_spectrum, a_energy, ion.continuum, cnt_enrg_shifted);
             linear_integrate(a_spectrum, a_energy, ion.pseudo_cont, psd_enrg_shifted);
-
-            /*
-      // continuum at ends of energy bins
-      vector<float> cont_spectrum, pseudo_spectrum;
-      for (vector<Real>::const_iterator ei=a_energy.begin(); ei!=a_energy.end(); ++ei)
-      {
-        // true continuum
-        cont_spectrum.push_back( linear_interp((float)*ei,cnt_enrg_shifted,ion.continuum) );
-        // pseudo continuum
-        pseudo_spectrum.push_back( linear_interp((float)*ei,psd_enrg_shifted,ion.pseudo_cont) );
-      }
-
-      // integrate with trapezoidal rule
-      for (int i=0; i<a_spectrum.size(); ++i)
-      {
-        const Real j_lo= (Real)(cont_spectrum[i]  +pseudo_spectrum[i]  );
-        const Real j_hi= (Real)(cont_spectrum[i+1]+pseudo_spectrum[i+1]);
-      
-        a_spectrum[i] += half*(j_lo+j_hi) * (a_energy[i+1]-a_energy[i]);
-      }
-      */
-            //}
-            else
-            {
-                std::cerr << " strangely ion " << a_rmJ << " was not found " << std::endl;
-            }
         }
         else
         {
-            std::cerr << " strangely element " << a_atomic_number << " was not found " << std::endl;
+            std::cerr << " strangely ion " << a_rmJ << " was not found " << std::endl;
         }
     }
+    else
+    {
+        std::cerr << " strangely element " << a_atomic_number << " was not found " << std::endl;
+    }
+}
 
 #endif // USE_APED

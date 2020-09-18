@@ -9,10 +9,9 @@
 #include <stdexcept>
 #include <vector>
 #include <string>
-#include <map>
+#include <cstring>
 #include <typeinfo>
 #include <cassert>
-#include <cstring>
 
 #ifdef zero
 #undef zero
@@ -24,9 +23,9 @@
 
 #define MAXDIM 7
 
-namespace FitsUtil {
+namespace fm::fits_util {
 
-  void print_fits_error(const int status, const std::string s="");
+  void print_fits_error(const int status, const std::string s={});
   
   template <class T> int fits_data_type(T t)
   {

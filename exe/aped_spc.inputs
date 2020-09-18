@@ -1,0 +1,38 @@
+#
+# input file to aped_spectrum.cpp
+#
+
+# read in path
+aped.aped_file_path=/Users/miniati/Work/codes/AtomDB/atomdb_v3.0.9
+aped.aped_version=3.0.9
+
+# min and max ph energy
+aped.min_ph_energy[keV]=0.1
+aped.max_ph_energy[keV]=12.0
+
+# using log scale for ph energy (0=no,1=yes)
+aped.use_log_energy_scale=1
+
+# spectral resolution
+aped.spectral_energy_resolution=0.001
+
+# plasma temperature in keV
+aped.plasma_temperature[keV]=1
+
+# plasma velocity in cm/sec
+aped.plasma_velocity[cm/s]=0.0
+
+# metallicity
+aped.plasma_metallicity=0.3
+
+# plasma abundance model
+aped.plasma_abundance_model=Lodders
+
+# use line emission (0=no,1=yes)
+aped.use_line_emission=1
+
+# use line emission (0=no,1=yes)
+aped.use_cont_emission=1
+
+# output file
+aped.output_file_name=emissivity_1keV

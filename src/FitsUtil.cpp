@@ -1,8 +1,8 @@
 
 #ifdef USE_APED
-#include "Fits_util.H"
+#include "FitsUtil.H"
 
-void FitsUtil::print_fits_error(const int status, const std::string s)
+void fm::fits_util::print_fits_error(const int status, const std::string s)
 {
   if (status)
     {
