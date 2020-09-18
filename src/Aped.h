@@ -13,9 +13,9 @@
 #include <cstdlib>
 #include <cmath>
 #include <cassert>
-#include "SutherlandDopita.h"
 
 #include "Timer.h"
+#include "SutherlandDopita.h"
 
 namespace fm::aped
 {
@@ -164,8 +164,8 @@ namespace fm::aped
             unsigned i = 0;
             while (err > TOLERANCE)
             {
-                wm.push_back(half * erf(de_lo + i * de));
-                wp.push_back(half * erf(de_hi + i * de));
+                wm.emplace_back(half * erf(de_lo + i * de));
+                wp.emplace_back(half * erf(de_hi + i * de));
                 err = abs(one - (wm[i] + wp[i]));
                 ++i;
             }
@@ -174,15 +174,15 @@ namespace fm::aped
             // first left wing
             while (--i > 0)
             {
-                m_w.push_back(wm[i] - wm[i - 1]);
+                m_w.emplace_back(wm[i] - wm[i - 1]);
             }
             assert(i == 0);
             // centre
-            m_w.push_back(wm[i] + wp[i]);
+            m_w.emplace_back(wm[i] + wp[i]);
             // right wing
             while (++i < N)
             {
-                m_w.push_back(wp[i] - wp[i - 1]);
+                m_w.emplace_back(wp[i] - wp[i - 1]);
             }
             // sanity checks
             assert(m_w.size() % 2 == 1);
@@ -307,7 +307,7 @@ namespace fm::aped
             for (const auto &a : elements)
             {
                 const Real abundance = pow(ten, mod_ab[a - 1] - ref_ab[a - 1]) * (a <= NBBNELEMENTS ? 1 : a_metallicity);
-                a_relative_abundances.push_back(ElementAbundance(a, abundance));
+                a_relative_abundances.emplace_back(ElementAbundance(a, abundance));
             }
         }
     }; // namespace APED
@@ -675,14 +675,14 @@ namespace fm::aped
                 // build energy
                 for (int i = 0; i <= a_num_energy_bins; ++i)
                 {
-                    m_energy.push_back(a_energy_min * pow(ten, (i * m_d_en)));
+                    m_energy.emplace_back(a_energy_min * pow(ten, (i * m_d_en)));
                 }
                 // and buffer energy
                 const Real min_buf_en = a_energy_min * pow(ten, -(num_buf_lo * m_d_en));
 
                 for (size_t i = 0; i <= (num_buf_lo + a_num_energy_bins + num_buf_hi); ++i)
                 {
-                    m_buf_energy.push_back(min_buf_en * pow(ten, (i * m_d_en)));
+                    m_buf_energy.emplace_back(min_buf_en * pow(ten, (i * m_d_en)));
                 }
             }
             // energy const spacing
@@ -694,13 +694,13 @@ namespace fm::aped
                 // build energy range and buffers
                 for (int i = 0; i <= a_num_energy_bins; ++i)
                 {
-                    m_energy.push_back(a_energy_min + i * m_d_en);
+                    m_energy.emplace_back(a_energy_min + i * m_d_en);
                 }
                 // and buffer energy
                 const Real min_buf_en = a_energy_min - num_buf_lo * m_d_en;
                 for (size_t i = 0; i <= (num_buf_lo + a_num_energy_bins + num_buf_hi); ++i)
                 {
-                    m_buf_energy.push_back(min_buf_en + i * m_d_en);
+                    m_buf_energy.emplace_back(min_buf_en + i * m_d_en);
                 }
             }
             assert(m_spectrum_size == m_energy.size() - 1);

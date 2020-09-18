@@ -124,8 +124,8 @@ void Aped::define(const std::string a_aped_path, const std::string a_version)
         // std::cout << " num-L = " << num_lines << ", num L_hdu= " << m_num_lines.at(hdu-3) << endl;
         // assert(num_lines==m_num_lines.at(hdu-3));
         // store temperature and density for this HDU
-        m_temperatures.push_back(temperature);
-        m_density.push_back(density);
+        m_temperatures.emplace_back(temperature);
+        m_density.emplace_back(density);
 
         std::vector<int> element, ion, upper_lev, lower_lev;
         std::vector<float> lambda, lambda_err, epsilon, epsilon_err;
@@ -191,12 +191,12 @@ void Aped::define(const std::string a_aped_path, const std::string a_version)
             temp_record.elements[element[l]].check_ion(ion[l]);
             //if (element[l]==3) std::cout << " A(3) " << temp_record.elements[element[l]].atomic_number << std::endl;
 
-            temp_record.elements[element[l]].ions[ion[l]].line_energy.push_back(keVToAngstrom / lambda[l]);
-            temp_record.elements[element[l]].ions[ion[l]].line_emissivity.push_back(epsilon[l]);
-            temp_record.elements[element[l]].ions[ion[l]].lower_level.push_back(lower_lev[l]);
-            temp_record.elements[element[l]].ions[ion[l]].upper_level.push_back(upper_lev[l]);
-            // temp_record.elements[element[l]].ions[ion[l]].line_energy_err    .push_back( keVToAngstrom/lambda_err[l] );
-            // temp_record.elements[element[l]].ions[ion[l]].line_emissivity_err.push_back( epsilon_err[l] );
+            temp_record.elements[element[l]].ions[ion[l]].line_energy.emplace_back(keVToAngstrom / lambda[l]);
+            temp_record.elements[element[l]].ions[ion[l]].line_emissivity.emplace_back(epsilon[l]);
+            temp_record.elements[element[l]].ions[ion[l]].lower_level.emplace_back(lower_lev[l]);
+            temp_record.elements[element[l]].ions[ion[l]].upper_level.emplace_back(upper_lev[l]);
+            // temp_record.elements[element[l]].ions[ion[l]].line_energy_err    .emplace_back( keVToAngstrom/lambda_err[l] );
+            // temp_record.elements[element[l]].ions[ion[l]].line_emissivity_err.emplace_back( epsilon_err[l] );
         }
 
         // parse continuum emission
@@ -216,7 +216,7 @@ void Aped::define(const std::string a_aped_path, const std::string a_version)
         assert(temp_record.elements.size() == NUM_APEC_ATOMS);
 
         // finally add data to table
-        m_aped_data.push_back(temp_record);
+        m_aped_data.emplace_back(temp_record);
 
     } // loop over hdus
 
