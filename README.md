@@ -16,7 +16,7 @@ is supposed to be in thermal equilibrium.
 Both Aped and Apec use native float data for database objects but extract spectra in a user 
 defined datatype Real.
 
-Compilation requires cfitsio librieries given the fits file format of the AtomDB database.
+Compilation requires cfitsio librieries given the FITS binary file format of the AtomDB database.
 Execution requires obviously the database files. The code works seamlessly with either the
 traditional format using 51 temperature bins or the upgraded version with 201 temperature bins,
 between 10^4 and 10^9 K.
