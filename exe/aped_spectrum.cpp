@@ -1,14 +1,9 @@
-#include <cstdlib>
-#include <cstring>
-#include <sys/stat.h>
+#include <cstdio>
 #include <iostream>
 #include <iomanip>
 #include <fstream>
 #include <string>
 #include <vector>
-#include <stdio.h>
-#include <typeinfo>
-#include <fitsio.h>
 
 #include "FileParser.h"
 #include "Aped.h"
