@@ -1,7 +1,7 @@
 #ifdef USE_APED
 
-#ifndef APED_H
-#define APED_H
+#ifndef _APED_
+#define _APED_
 
 #include <sys/stat.h>
 #include <stdexcept>
@@ -14,12 +14,18 @@
 #include <cmath>
 #include <cassert>
 
-#include "Timer.h"
-#include "SutherlandDopita.h"
+#ifdef USE_TIMER
+#include "Timer.h" // available at https://github.com/fminiati/mthread-timer
+using namespace fm::profiling;
+#else
+template <unsigned T=0> struct Timer_t {
+    Timer_t(std::string &&){};
+};
+#endif
+
 
 namespace fm::aped
 {
-    using namespace fm::profiling;
     using Real = double;
 
     constexpr double zero = 0.0e0;
@@ -71,7 +77,8 @@ namespace fm::aped
     template <class T>
     T linear_interp(const T xp, const std::vector<T> &x, const std::vector<T> &f)
     {
-        //
+        Timer_t<4> t("Aped::linear_interp_t");
+
         if (xp < x.front() || xp >= x.back())
             return T(0);
 
@@ -87,7 +94,8 @@ namespace fm::aped
     void linear_interp(std::vector<T> &fp, const std::vector<T> &xp,
                        const std::vector<R> &f, const std::vector<R> &x)
     {
-        //
+        Timer_t<4> t("Aped::linear_interp_tr");
+
         std::vector<T> xh(f.size());
         {
             const R *xl = &x[0];
@@ -103,12 +111,10 @@ namespace fm::aped
         size_t ip = 1;
         for (size_t i = 0; i < fp.size(); ++i)
         {
-
             const T hp = half * (xp[i] + xp[i + 1]);
             //if (hp>x.front() &&  hp<x.back()) {
             if (hp > xh.front() && hp < xh.back())
             {
-
                 while (hp > xh[ip])
                     ++ip;
 
@@ -123,11 +129,11 @@ namespace fm::aped
     void linear_integrate(std::vector<T> &fp, const std::vector<T> &xp,
                           const std::vector<R> &f, const std::vector<R> &x)
     {
-        //
+        Timer_t<4> t("Aped::linear_integrate");
+
         size_t ip = 0;
         for (size_t i = 0; i < fp.size(); ++i)
         {
-
             const T hp = half * (xp[i] + xp[i + 1]);
             if (hp >= x.front() && hp <= x.back())
             {
@@ -153,6 +159,8 @@ namespace fm::aped
     {
         GaussianKernel(const Real e_line, const Real e_lo, const Real e_hi)
         {
+            Timer_t<4> t("Aped::GaussianKernel");
+
             // builds kernel with size sufficient to have negligible residuals in the wings
             const double de = e_hi - e_lo;
             const double de_hi = e_hi - e_line;
@@ -252,11 +260,8 @@ namespace fm::aped
         {
         }
         // null
-        ElementAbundance(const ElementAbundance &ea)
-            : atomic_number(ea.atomic_number), abundance(ea.abundance)
-        {
-        }
-        //
+        ElementAbundance(const ElementAbundance &) = default;
+
         ~ElementAbundance() {}
 
         unsigned atomic_number;
@@ -318,10 +323,7 @@ namespace fm::aped
         // null constructor
         Ion() {}
         // full constructor
-        Ion(const Ion &a_ion)
-        {
-            *this = a_ion;
-        }
+        Ion(const Ion &) = default;
         // destructor
         ~Ion() {}
         // partial constructor (set ion species)
@@ -331,25 +333,7 @@ namespace fm::aped
         }
 
         // copy constructor
-        Ion &operator=(const Ion &a_rhs)
-        {
-            this->ion = a_rhs.ion;
-            this->cont_energy = a_rhs.cont_energy;
-            this->continuum = a_rhs.continuum;
-            this->continuum_err = a_rhs.continuum_err;
-            this->pseudo_cont_energy = a_rhs.pseudo_cont_energy;
-            this->pseudo_cont = a_rhs.pseudo_cont;
-            this->pseudo_cont_err = a_rhs.pseudo_cont_err;
-            this->line_energy = a_rhs.line_energy;
-            this->line_energy_err = a_rhs.line_energy_err;
-            this->line_emissivity = a_rhs.line_emissivity;
-            this->line_emissivity_err = a_rhs.line_emissivity_err;
-            this->elem_driver = a_rhs.elem_driver;
-            this->ion_driver = a_rhs.ion_driver;
-            this->lower_level = a_rhs.lower_level;
-            this->upper_level = a_rhs.upper_level;
-            return *this;
-        }
+        Ion &operator=(const Ion &) = default;
 
         unsigned ion;
         std::vector<float> cont_energy;
@@ -376,25 +360,14 @@ namespace fm::aped
         // destructor
         ~Element() {}
         // partial constructors
-        Element(const Element &A)
-            : name(A.name), atomic_number(A.atomic_number), atomic_mass(A.atomic_mass), ions(A.ions)
-        {
-        }
+        Element(const Element &) = default;
         //
         Element(const std::string a_name, const unsigned a_A, const float a_M)
             : name(a_name), atomic_number(a_A), atomic_mass(a_M)
         {
         }
-
         // copy constructor
-        Element &operator=(const Element &a_rhs)
-        {
-            this->name = a_rhs.name;
-            this->atomic_number = a_rhs.atomic_number;
-            this->atomic_mass = a_rhs.atomic_mass;
-            this->ions.insert(a_rhs.ions.begin(), a_rhs.ions.end());
-            return *this;
-        }
+        Element &operator=(const Element &) = default;
 
         void check_ion(const unsigned a_ion)
         {
@@ -424,20 +397,12 @@ namespace fm::aped
         // null constructor
         TemperatureRecord() {}
         //
-        TemperatureRecord(const TemperatureRecord &a_tr)
-            : temperature(a_tr.temperature), elements(a_tr.elements)
-        {
-        }
-
+        TemperatureRecord(const TemperatureRecord &) = default;
         // destructor
         ~TemperatureRecord() {}
         // copy constructor
-        TemperatureRecord &operator=(const TemperatureRecord &a_rhs)
-        {
-            this->temperature = a_rhs.temperature;
-            this->elements.insert(a_rhs.elements.begin(), a_rhs.elements.end());
-            return *this;
-        }
+        TemperatureRecord &operator=(const TemperatureRecord &) = default;
+
 
         // add new element
         void check_element(const unsigned a_atomic_number)
@@ -475,23 +440,7 @@ namespace fm::aped
             define(a_aped_path, a_version);
         }
 
-        Aped(const Aped &a_aped)
-        {
-            // temperature data
-            this->m_aped_data = a_aped.m_aped_data;
-            // log step of temp database
-            this->m_dlog_temp = a_aped.m_dlog_temp;
-            // verbosity, zero by default
-            this->m_verbosity = a_aped.m_verbosity;
-            //
-            this->m_temperatures = a_aped.m_temperatures;
-            this->m_density = a_aped.m_density;
-            this->m_num_lines = a_aped.m_num_lines;
-            this->m_num_elements_line = a_aped.m_num_elements_line;
-            this->m_num_elements_coco = a_aped.m_num_elements_coco;
-            this->m_num_continuum = a_aped.m_num_continuum;
-            this->m_num_pseudo = a_aped.m_num_pseudo;
-        }
+        Aped(const Aped &) = default;
 
         // full construtor
         void define(const std::string a_aped_path, const std::string a_version);
@@ -576,7 +525,8 @@ namespace fm::aped
         void simple_convolution(std::vector<Real> &a_spectrum,
                                 const LineKernel *a_kernel) const
         {
-            //
+            Timer_t<4> t("Aped::simple_convolution");
+
             const int kwing = a_kernel->wing_size();
 
             std::vector<Real> convolution(a_spectrum.size(), 0);
@@ -604,6 +554,8 @@ namespace fm::aped
                           const Real a_line_emissivity,
                           const LineKernel *a_kernel) const
         {
+            Timer_t<4> t("Aped::line_profile");
+
             if (a_line_energy >= a_energy.front() && a_line_energy < a_energy.back())
             {
                 // find line energy bin
@@ -640,274 +592,7 @@ namespace fm::aped
         std::vector<int> m_num_pseudo;
     };
 
-    // compute emissivity spectra using lookup table based on APED
-    struct Apec
-    {
-        // null constructor
-        Apec() {}
-
-        // overloaded version of emission spectrum
-        Apec(const std::string a_aped_path,
-             const std::string a_aped_version,
-             const Real a_energy_min,
-             const Real a_energy_max,
-             const int a_num_energy_bins,
-             const std::string a_energy_bin_spacing,
-             const std::string a_abundances_model = "AndersGrevesse",
-             const std::string a_line_broadening = "convolution",
-             const bool a_line_emission = true,
-             const bool a_cont_emission = true)
-            : m_spectrum_size(a_num_energy_bins),
-              m_abundances_model(a_abundances_model),
-              m_line_broadening(a_line_broadening),
-              m_line_emission(a_line_emission),
-              m_cont_emission(a_cont_emission)
-        {
-            assert((a_line_broadening == "convolution" && a_energy_bin_spacing == "log") ||
-                   (a_line_broadening == "linebyline" && a_energy_bin_spacing == "const"));
-
-            // energy log spacing
-            if (a_energy_bin_spacing == "log")
-            {
-                m_d_en = log10(a_energy_max / a_energy_min) / a_num_energy_bins;
-                const unsigned num_buf_lo = (unsigned)ceil(-log10(one - MAX_DOPPLER_SHIFT) / m_d_en);
-                const unsigned num_buf_hi = (unsigned)ceil(log10(one + MAX_DOPPLER_SHIFT) / m_d_en);
-                // build energy
-                for (int i = 0; i <= a_num_energy_bins; ++i)
-                {
-                    m_energy.emplace_back(a_energy_min * pow(ten, (i * m_d_en)));
-                }
-                // and buffer energy
-                const Real min_buf_en = a_energy_min * pow(ten, -(num_buf_lo * m_d_en));
-
-                for (size_t i = 0; i <= (num_buf_lo + a_num_energy_bins + num_buf_hi); ++i)
-                {
-                    m_buf_energy.emplace_back(min_buf_en * pow(ten, (i * m_d_en)));
-                }
-            }
-            // energy const spacing
-            else if (a_energy_bin_spacing == "const")
-            {
-                m_d_en = (a_energy_max - a_energy_min) / a_num_energy_bins;
-                const unsigned num_buf_lo = (unsigned)ceil(a_energy_min * MAX_DOPPLER_SHIFT / m_d_en);
-                const unsigned num_buf_hi = (unsigned)ceil(a_energy_max * MAX_DOPPLER_SHIFT / m_d_en);
-                // build energy range and buffers
-                for (int i = 0; i <= a_num_energy_bins; ++i)
-                {
-                    m_energy.emplace_back(a_energy_min + i * m_d_en);
-                }
-                // and buffer energy
-                const Real min_buf_en = a_energy_min - num_buf_lo * m_d_en;
-                for (size_t i = 0; i <= (num_buf_lo + a_num_energy_bins + num_buf_hi); ++i)
-                {
-                    m_buf_energy.emplace_back(min_buf_en + i * m_d_en);
-                }
-            }
-            assert(m_spectrum_size == m_energy.size() - 1);
-
-            // build aped
-            Aped aped(a_aped_path, a_aped_version);
-            // set temperature table
-            m_temperature = aped.temperatures();
-            m_dlog_temp = aped.temp_log_interv();
-
-            // temperature range
-            m_temp_min = (Real)*std::min_element(m_temperature.begin(), m_temperature.end());
-            m_temp_max = (Real)*std::max_element(m_temperature.begin(), m_temperature.end());
-
-            // separate BBN elements ...
-            std::vector<unsigned> bbn_el(APED_atomic_numbers, APED_atomic_numbers + NBBNELEMENTS);
-            build_emissivity_table(m_j_bbn_el, bbn_el, aped);
-
-            // ... from metals
-            std::vector<unsigned> metals(APED_atomic_numbers + NBBNELEMENTS, APED_atomic_numbers + NUM_APEC_ATOMS);
-            build_emissivity_table(m_j_metals, metals, aped);
-
-            std::cout << "  " << '\n';
-            std::cout << "Apec: Apec built successfully " << '\n';
-            std::cout << "  " << '\n';
-        }
-
-        // copy constructor
-        Apec(const Apec &a_apec)
-            : m_j_bbn_el(a_apec.m_j_bbn_el),
-              m_j_metals(a_apec.m_j_metals),
-              m_energy(a_apec.m_energy),
-              m_buf_energy(a_apec.m_buf_energy),
-              m_temperature(a_apec.m_temperature),
-              m_spectrum_size(a_apec.m_spectrum_size),
-              m_d_en(a_apec.m_d_en),
-              m_dlog_temp(a_apec.m_dlog_temp),
-              m_temp_min(a_apec.m_temp_min),
-              m_temp_max(a_apec.m_temp_max),
-              m_abundances_model(a_apec.m_abundances_model),
-              m_line_broadening(a_apec.m_line_broadening),
-              m_line_emission(a_apec.m_line_emission),
-              m_cont_emission(a_apec.m_cont_emission)
-        {
-        }
-
-        // spectral energy
-        std::vector<Real> spectral_energy() const
-        {
-            return m_energy;
-        }
-
-        // ph cm^3 s^-1
-        void emission_spectrum(std::vector<Real> &a_spectrum,
-                               const Real a_temperature,
-                               const Real a_metallicity,
-                               const Real a_doppler_shift) const
-        {
-            // timer
-            Timer_t<> t("APED::Apec::emission_spectrum");
-
-            // no emissivity below temperature floor
-            if (a_temperature > m_temp_min && a_temperature < m_temp_max)
-            {
-                // identify temperature bin
-                const int it_lo = (int)floor(log10(a_temperature / m_temp_min) / m_dlog_temp);
-                const int it_hi = std::min((size_t)it_lo + 1, m_temperature.size() - 1);
-                assert(a_temperature >= (Real)m_temperature[it_lo] && a_temperature <= (Real)m_temperature[it_hi]);
-
-                // temperature interpolation coefficient
-                const Real f = std::abs(log10(a_temperature / (Real)m_temperature[it_lo])) / m_dlog_temp;
-
-                // multiply by ne so that the spectrum remains simply normalized to nH^2
-                const Real ne = m_sd.n_e(a_temperature, a_metallicity);
-
-                // rename
-                const Real z = a_metallicity;
-
-                const unsigned buf_spectrum_size = m_buf_energy.size() - 1;
-                std::vector<Real> js(buf_spectrum_size);
-                {
-                    Timer_t<> t("APED::Apec::emission_spectrum:temp_interpolation");
-
-                    unsigned i = 0;
-                    const Real *jblo = &m_j_bbn_el[it_lo][i]; // bbn low  T
-                    const Real *jbhi = &m_j_bbn_el[it_hi][i]; // bbn high T
-                    const Real *jzlo = &m_j_metals[it_lo][i]; // met low  T
-                    const Real *jzhi = &m_j_metals[it_hi][i]; // met high T
-                    Real *j = &js[i];
-                    while (i++ < buf_spectrum_size)
-                    {
-                        *j++ = ne * ((one - f) * (*jblo++ + z * *jzlo++) + f * (*jbhi++ + z * *jzhi++));
-                    }
-                }
-
-                // Interpolate from rest frame to lab frame spectrum
-                {
-                    Timer_t<> t("APED::Apec::emission_spectrum:ph_en_interpolation");
-                    std::vector<Real> shifted_energy(m_buf_energy.size());
-
-                    const Real df = one + a_doppler_shift;
-                    const Real *be = &m_buf_energy[0];
-                    Real *se = &shifted_energy[0];
-                    unsigned i = 0;
-                    while (i++ < m_buf_energy.size())
-                    {
-                        *se++ = df * *be++;
-                    }
-                    //
-
-                    a_spectrum.resize(m_spectrum_size, zero);
-                    linear_interp(a_spectrum, m_energy, js, shifted_energy);
-                }
-            }
-            else
-            {
-                Timer_t<> t("APED::Apec::emission_spectrum:out_of_temp_range");
-                a_spectrum.resize(m_spectrum_size, zero);
-            }
-        }
-
-        // ph cm^3 s^-1
-        Real emissivity(const Real a_temperature, const Real a_metallicity, const Real a_doppler_shift)
-        {
-            // timer
-            Timer_t<> t("APED::Apec::emissivity");
-
-            // call aped
-            std::vector<Real> spectrum;
-            emission_spectrum(spectrum, a_temperature, a_metallicity, a_doppler_shift);
-
-            Real sum = zero;
-            for (const auto &s : spectrum)
-                sum += s;
-
-            return sum;
-        }
-
-    protected:
-        //
-        void build_emissivity_table(std::vector<std::vector<Real>> &a_jt,
-                                    const std::vector<unsigned> &a_elements,
-                                    const Aped &a_aped)
-        {
-            // here use these dummy values and rescaled properly later
-            Real dummy_metallicity = 1.0;
-            Real no_doppler_shift = 0.0;
-
-            // resize table
-            a_jt.clear();
-
-            // utility to compute abundances re
-            AbundanceUtil ab_ut;
-            //
-            std::list<ElementAbundance> rel_abundances;
-            ab_ut.relative_abundances(rel_abundances, a_elements, dummy_metallicity, m_abundances_model);
-
-            // temperature dimensions
-            a_jt.resize(m_temperature.size());
-
-            // build call aped
-            auto it = m_temperature.begin();
-            for (auto &jt : a_jt)
-            {
-                std::vector<Real> j;
-                a_aped.emission_spectrum(j,
-                                         m_buf_energy,
-                                         rel_abundances,
-                                         *it,
-                                         no_doppler_shift,
-                                         m_line_broadening,
-                                         m_line_emission,
-                                         m_cont_emission);
-                // move emissivity to table
-                jt = std::move(j);
-                // push temperature iterator
-                ++it;
-            }
-        }
-
-    protected:
-        // tables
-        std::vector<std::vector<Real>> m_j_bbn_el;
-        std::vector<std::vector<Real>> m_j_metals;
-        // SD object to get ne(T,Z)
-        fm::cooling_tables::SutherlandDopita m_sd;
-        // energy, buffered energy and temperature grid
-        std::vector<Real> m_energy;
-        std::vector<Real> m_buf_energy;
-        std::vector<double> m_temperature;
-
-    protected:
-        // size of spectrum
-        unsigned m_spectrum_size;
-        // energy and (log of) temperature intervals
-        Real m_d_en;
-        double m_dlog_temp;
-        // temp bounds
-        double m_temp_min, m_temp_max;
-        // emissivity features
-        std::string m_abundances_model;
-        std::string m_line_broadening;
-        bool m_line_emission;
-        bool m_cont_emission;
-    };
-
 } // namespace fm::aped
 
-#endif // APED_H
+#endif // _APED_
 #endif // USE_APED
