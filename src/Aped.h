@@ -1,7 +1,7 @@
 #ifdef USE_APED
 
-#ifndef _APED_
-#define _APED_
+#ifndef APED_H
+#define APED_H
 
 #include <sys/stat.h>
 #include <stdexcept>

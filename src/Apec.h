@@ -1,7 +1,7 @@
 #ifdef USE_APED
 
-#ifndef _APEC_
-#define _APEC_
+#ifndef APEC_H
+#define APEC_H
 
 #include <iostream>
 #include <vector>
