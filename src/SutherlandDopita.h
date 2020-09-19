@@ -1,5 +1,5 @@
-#ifndef _SUTHERLANDDOPITA_H_
-#define _SUTHERLANDDOPITA_H_
+#ifndef SUTHERLANDDOPITA_H
+#define SUTHERLANDDOPITA_H
 
 #include <cstdlib>
 #include <cassert>
@@ -12,11 +12,17 @@
 #include <iomanip>
 #include <iostream>
 #include <fstream>
-#include "Timer.h"
+
+#ifdef USE_TIMER
+#include "Timer.h" // available at https://github.com/fminiati/mthread-timer
+using namespace fm::profiling;
+#else
+template <unsigned T=0> struct Timer_t {
+    Timer_t(std::string &&){};
+};
+#endif
 
 namespace fm::cooling_tables {
-
-  using namespace fm::profiling;
 
   constexpr double zero = 0.0e0;
   constexpr double one = 1.0e0;
