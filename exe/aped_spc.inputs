@@ -3,7 +3,7 @@
 #
 
 # read in path
-aped.aped_file_path=/Users/miniati/Work/codes/AtomDB/atomdb_v3.0.9
+aped.aped_file_path= ../../atomdb_v3.0.9
 aped.aped_version=3.0.9
 
 # min and max ph energy
