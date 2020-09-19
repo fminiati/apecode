@@ -20,7 +20,13 @@ int main(int argc, char* argv[])
   for (int i=1; i<argc; ++i) {
     if (strncmp(argv[i],"-f",3) == 0) input_file = argv[i+1];
   }
-  std::cout << " input file name is " << input_file << '\n';
+  std::cout << "input file name is " << input_file << '\n';
+  if (input_file=="unknown")
+  {
+    const std::string prog(argv[0]);
+    std::cout << "\nrun this prog with: " + prog + " -f input_filename\n\n";
+    return 0;
+  }
 
   // read input file
   FileParser input(input_file);
