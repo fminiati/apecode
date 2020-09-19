@@ -2,7 +2,7 @@
 
 BIN    = -L/opt/local/bin
 LIB    = -L/opt/local/lib
-INCL   = -I/opt/local/include -I./../src -I../../util/
+INCL   = -I/opt/local/include -I./../src
 EXEDIR = ../exe/
 
 OBJ = aped_spectrum.o Aped.o FitsUtil.o
@@ -23,11 +23,11 @@ LIBS   = $(LIB) -lm -lstdc++ -lcfitsio
 .c.o:
 	$(CC) $(OPTS) -c $<
 
-ox: $(OBJ)
+aped: $(OBJ)
 	$(CXX) ${OPTS} -o $(EXEDIR)aped.ex $(OBJ) $(LIBS)
 
 clean: 
-	\rm *.o *.ex
+	\rm *.o $(EXEDIR)*.ex
 
 #------------------------------------------------------------------------------
 # list of dependencies
