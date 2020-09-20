@@ -1,4 +1,3 @@
-
 #ifdef USE_APED
 
 #ifndef FITSTOOLS_H

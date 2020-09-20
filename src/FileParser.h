@@ -1,6 +1,5 @@
-
-#ifndef FILE_PARSER_H
-#define FILE_PARSER_H
+#ifndef FILEPARSER_H
+#define FILEPARSER_H
 
 #include <cassert>
 #include <string>

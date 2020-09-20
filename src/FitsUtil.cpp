@@ -1,4 +1,3 @@
-
 #ifdef USE_APED
 #include "FitsUtil.h"
 
