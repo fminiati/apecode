@@ -7,8 +7,8 @@ EXEDIR = ../exe/
 
 OBJ = aped_spectrum.o Aped.o FitsUtil.o
 
-CC     = /opt/local/bin/gcc-mp-10
-CXX    = /opt/local/bin/g++-mp-10
+CC     = /opt/local/bin/clang-mp-9.0 #/opt/local/bin/gcc-mp-10
+CXX    = /opt/local/bin/clang++-mp-9.0 #/opt/local/bin/g++-mp-10
 FC     = /opt/local/bin/gfortran-mp-10
 OPTS   = -std=c++17 -O2 -g -Wall -DUSE_APED
 
