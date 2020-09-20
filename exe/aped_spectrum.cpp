@@ -9,11 +9,10 @@
 #include "Aped.h"
 #include "FitsUtil.h"
 
-using FileParser = fm::FileParser;
-using namespace fm::aped;
-
 int main(int argc, char* argv[])
 {
+  using namespace fm::aped;
+
   // get input file
   std::string input_file="unknown";
 
@@ -29,7 +28,7 @@ int main(int argc, char* argv[])
   }
 
   // read input file
-  FileParser input(input_file);
+  fm::FileParser input(input_file);
 
   // read in path and version
   std::string aped_file_path;
@@ -39,7 +38,7 @@ int main(int argc, char* argv[])
   input.get_item(aped_version,"aped.aped_version");
   
   // define Aped object
-  fm::aped::Aped aped(aped_file_path,aped_version);
+  Aped aped(aped_file_path,aped_version);
   
   // min and max ph energy
   double emin=0.0;
