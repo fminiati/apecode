@@ -1,0 +1,38 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+        {
+            "type": "shell",
+            "label": "C/C++: clang++ build active file",
+            "command": "/opt/local/bin/clang++-mp-9.0",
+            "args": [
+                "--std=c++17",
+				"-g",
+				"-O2",
+				"-Wall",
+                "-DUSE_APED",
+                "-I${workspaceFolder}/src",
+				"-I/opt/local/include",
+                "${file}",
+                "${workspaceFolder}/src/Aped.cpp",
+                "${workspaceFolder}/src/FitsUtil.cpp",
+                "-o",
+                "${workspaceFolder}/exe/${fileBasenameNoExtension}.ex",
+				"-L/opt/local/lib",
+                "-lm",
+                "-lstdc++",
+                "-lcfitsio"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+	]
+}
