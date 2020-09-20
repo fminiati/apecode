@@ -31,3 +31,4 @@
 *.ex
 *.out
 *.app
+*.dSYM
