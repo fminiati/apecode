@@ -5,8 +5,11 @@
 #include <string>
 #include <vector>
 
-#include "FileParser.h"
+// this variable would be usually set at compilation, however this is safe 
+// as this code wouldn't make sense without such definition
+#define USE_APED
 #include "Aped.h"
+#include "FileParser.h"
 #include "FitsUtil.h"
 
 int main(int argc, char* argv[])
