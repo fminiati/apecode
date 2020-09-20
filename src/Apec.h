@@ -11,7 +11,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <cassert>
-#include "Aped.H"
+#include "Aped.h"
 #include "SutherlandDopita.h"
 
 namespace fm::aped

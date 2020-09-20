@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <cassert>
 #include "Aped.h"
-#include "Util.h"
 #include "FitsUtil.h"
 
 namespace fm::aped
