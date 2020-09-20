@@ -181,8 +181,5 @@ int main(int argc, char* argv[])
     }
   }
   
-  // read parameters from input fits files:
-  // read temperature data
-  
   return 0;
 }
