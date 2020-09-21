@@ -31,7 +31,10 @@
 *.ex
 *.out
 *.app
-*.dSYM
 
-# Temporaries
-tmp
+# Apple' Desktop Services Store
+*.DS_Store
+# clang's stuff
+*.dSYM
+# temporaries
+*tmp
