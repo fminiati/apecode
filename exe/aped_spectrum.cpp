@@ -28,7 +28,9 @@
 
 // this variable would be usually set at compilation, however this is safe 
 // as this code wouldn't make sense without such definition
+#ifndef USE_APED
 #define USE_APED
+#endif
 #include "Aped.h"
 #include "FileParser.h"
 #include "FitsUtil.h"
