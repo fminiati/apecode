@@ -1,4 +1,4 @@
-Apecode is a code to compute astrophysical plasma spectral emission base on the AtomDB database.
+Apecode is a code to compute astrophysical plasma spectral emission based on the AtomDB database.
 
 The code structure reflects the AtomDB database as represented in the XSPEC libraries.
 It is meant to be a standalone version to be used and linked with personal analysis or 
