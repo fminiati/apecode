@@ -34,7 +34,8 @@ namespace fm::aped
     using namespace fm::fits_util;
 
     // full construtor
-    void Aped::define(const std::string a_aped_path, const std::string a_version)
+    Aped::Aped(const std::string a_aped_path, const std::string a_version, const int a_verbosity)
+        : m_verbosity(a_verbosity)
     {
         Timer_t<> t("Aped::define");
 
@@ -59,11 +60,11 @@ namespace fm::aped
             print_fits_error(status);
         }
 
+        // number of hdus
+        int num_hdus = -1, num_chdus = -1;
         {
             Timer_t<> t("Aped::define:fits_read_in_params");
 
-            // number of hdus
-            int num_hdus = -1, num_chdus = -1;
             fits_get_num_hdus(f_line_ptr, &num_hdus, &status);
             fits_get_num_hdus(f_coco_ptr, &num_chdus, &status);
             assert(num_hdus == num_chdus);

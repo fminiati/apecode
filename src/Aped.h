@@ -275,12 +275,11 @@ namespace fm::aped
     {
         // null
         ElementAbundance() {}
-        // simple constructor
+        // full constructor
         ElementAbundance(const unsigned a_n, const Real a_a)
             : atomic_number(a_n), abundance(a_a)
-        {
-        }
-        // null
+        {}
+        // copy
         ElementAbundance(const ElementAbundance &) = default;
 
         ~ElementAbundance() {}
@@ -343,17 +342,15 @@ namespace fm::aped
     {
         // null constructor
         Ion() {}
-        // full constructor
+        // copy constructor
         Ion(const Ion &) = default;
         // destructor
         ~Ion() {}
         // partial constructor (set ion species)
         Ion(const unsigned a_ion)
             : ion(a_ion)
-        {
-        }
-
-        // copy constructor
+        {}
+        // assignemt operator
         Ion &operator=(const Ion &) = default;
 
         unsigned ion;
@@ -380,14 +377,13 @@ namespace fm::aped
         Element() {}
         // destructor
         ~Element() {}
-        // partial constructors
+        // copy constructors
         Element(const Element &) = default;
-        //
+        // partial constructor
         Element(const std::string a_name, const unsigned a_A, const float a_M)
             : name(a_name), atomic_number(a_A), atomic_mass(a_M)
-        {
-        }
-        // copy constructor
+        {}
+        // assignment operator
         Element &operator=(const Element &) = default;
 
         void check_ion(const unsigned a_ion)
@@ -417,13 +413,12 @@ namespace fm::aped
     {
         // null constructor
         TemperatureRecord() {}
-        //
+        // copy
         TemperatureRecord(const TemperatureRecord &) = default;
         // destructor
         ~TemperatureRecord() {}
-        // copy constructor
+        // assignment operator
         TemperatureRecord &operator=(const TemperatureRecord &) = default;
-
 
         // add new element
         void check_element(const unsigned a_atomic_number)
@@ -449,23 +444,14 @@ namespace fm::aped
     //
     struct Aped
     {
-        // constructor
+        // null constructor
         Aped()
             : m_verbosity(0)
-        {
-        }
-
-        Aped(const std::string a_aped_path, const std::string a_version, const int a_verbosity = 0)
-            : m_verbosity(a_verbosity)
-        {
-            define(a_aped_path, a_version);
-        }
-
+        {}
+        // full constructor
+        Aped(const std::string a_aped_path, const std::string a_version, const int a_verbosity = 0);
+        // copy constructor
         Aped(const Aped &) = default;
-
-        // full construtor
-        void define(const std::string a_aped_path, const std::string a_version);
-
         // destructor
         ~Aped() {}
 
