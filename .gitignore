@@ -32,3 +32,6 @@
 *.out
 *.app
 *.dSYM
+
+# Temporaries
+tmp
