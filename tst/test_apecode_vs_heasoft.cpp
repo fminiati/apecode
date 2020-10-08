@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     input.get_item(velocity, "aped.plasma_velocity[cm/s]");
 
     // Doppler shift
-    const double doppler_shift = velocity / fm::aped::C_cm_s;
+    const double doppler_shift = velocity / fm::aped::c_cgs;
 
     // metallicity
     double metallicity = 0.3;
