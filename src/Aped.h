@@ -61,25 +61,23 @@ namespace fm::aped
     constexpr double TOLERANCE = (1.e-5);
 
     // aped database contains data for 28 species
-    constexpr unsigned NUM_APEC_ATOMS = 30;
+    constexpr unsigned NUM_APED_ATOMS = 30;
 
     // Boltzmann's constant
-    constexpr double k_B = 1.3806488e-16;
+    constexpr double kB_cgs = 1.3806488e-16;
     // conversion from keV to Angstrom
     constexpr double keVToAngstrom = 12.39854;
     // conversion from Angstrom to keV
-    constexpr double AngstromTokeV = 0.080654657725829;
+    constexpr double AngstromTokeV = one / keVToAngstrom;
     // conversion from keV to Kelvin
     constexpr double keVToKelvin = 1.1604505e7;
     // kT in erg corresponding to temperature of 1 keV
     constexpr double keVToerg = 1.60217646e-9;
 
     // Speed of light in cm s^-1
-    constexpr double C_cm_s = 2.9979246e10;
+    constexpr double c_cgs = 2.9979246e10;
     // Unified atomic mass constant in g
-    constexpr double AMU_g = 1.660538e-24;
-    // km in cm
-    constexpr double KM_cm = 1.0e5;
+    constexpr double AMU_cgs = 1.660538e-24;
     // equivalent to v/c with v=15000 km/sec
     constexpr double MAX_DOPPLER_SHIFT = (0.05);
 
@@ -165,22 +163,22 @@ namespace fm::aped
 
     //
     // data
-    static const unsigned APED_atomic_numbers[NUM_APEC_ATOMS] = {
+    static const unsigned atomic_numbers[NUM_APED_ATOMS] = {
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30};
-    static const char *APED_atom_names[NUM_APEC_ATOMS] = {
+    static const char *atom_names[NUM_APED_ATOMS] = {
         "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl",
         "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn"};
-    static const float APED_atomic_masses[NUM_APEC_ATOMS] = {
+    static const float atomic_masses[NUM_APED_ATOMS] = {
         1.00794, 4.002602, 6.941, 9.012182, 10.811, 12.0107, 14.0067, 15.9994, 18.9984032, 20.1797,
         22.989770, 24.3050, 26.981538, 28.0855, 30.973761, 32.065, 35.4527, 39.948, 39.0983, 40.078,
         44.955910, 47.867, 50.9415, 51.9961, 54.938049, 55.845, 58.933200, 58.6934, 63.456, 65.39};
 
-    static const float AndersGrevesseAbundances[NUM_APEC_ATOMS] = {
+    static const float AndersGrevesseAbundances[NUM_APED_ATOMS] = {
         12.0, 10.99, 1.16, 1.15, 2.60, 8.56, 8.05, 8.93, 4.56, 8.09, 6.33, 7.58, 6.47, 7.55, 5.45,
         7.21, 5.50, 6.56, 5.12, 6.36, 3.10, 4.99, 4.00, 5.67, 5.39, 7.67, 4.92, 6.25, 4.21, 4.60};
 
-    static const float LoddersAbundances[NUM_APEC_ATOMS] = {
+    static const float LoddersAbundances[NUM_APED_ATOMS] = {
         12.0, 10.984, 3.35, 1.48, 2.85, 8.46, 7.90, 8.76, 4.53, 7.95, 6.37, 7.62, 6.54, 7.61, 5.54,
         7.26, 5.33, 6.62, 5.18, 6.41, 3.15, 5.00, 4.07, 5.72, 5.58, 7.54, 4.98, 6.29, 4.34, 4.70};
 
@@ -223,7 +221,7 @@ namespace fm::aped
             // make sure elements are within range
             for (const auto a : a_elements)
             {
-                if (a > NUM_APEC_ATOMS)
+                if (a > NUM_APED_ATOMS)
                     throw std::runtime_error("AbundanceUtil:: atomic number is out of range ! ");
             }
 
@@ -232,17 +230,17 @@ namespace fm::aped
             if (a_elements.size() > 0)
                 elements.assign(a_elements.begin(), a_elements.end());
             else
-                elements.assign(APED_atomic_numbers, APED_atomic_numbers + NUM_APEC_ATOMS);
+                elements.assign(atomic_numbers, atomic_numbers + NUM_APED_ATOMS);
 
             // reference abundance values
-            std::vector<float> ref_ab(AndersGrevesseAbundances, AndersGrevesseAbundances + NUM_APEC_ATOMS);
+            std::vector<float> ref_ab(AndersGrevesseAbundances, AndersGrevesseAbundances + NUM_APED_ATOMS);
 
             // model abundance values
             std::vector<float> mod_ab;
             if (a_abundances_model == "AndersGrevesse")
-                mod_ab.assign(AndersGrevesseAbundances, AndersGrevesseAbundances + NUM_APEC_ATOMS);
+                mod_ab.assign(AndersGrevesseAbundances, AndersGrevesseAbundances + NUM_APED_ATOMS);
             else if (a_abundances_model == "Lodders")
-                mod_ab.assign(LoddersAbundances, LoddersAbundances + NUM_APEC_ATOMS);
+                mod_ab.assign(LoddersAbundances, LoddersAbundances + NUM_APED_ATOMS);
             else
                 throw std::runtime_error("abundance model " + a_abundances_model + " is not recongnised ! ");
 
@@ -343,7 +341,7 @@ namespace fm::aped
         {
             if (elements.find(a_atomic_number) == elements.end())
             {
-                assert(a_atomic_number <= NUM_APEC_ATOMS);
+                assert(a_atomic_number <= NUM_APED_ATOMS);
 
                 Element E(APED_atom_names[a_atomic_number - 1],
                           a_atomic_number,
