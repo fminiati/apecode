@@ -216,9 +216,9 @@ namespace fm::aped
 
         // compute abundances relative to AndersGrevesse
         static void relative_abundances(std::vector<ElementAbundance> &a_relative_abundances,
-                                 const std::vector<unsigned> &a_elements,
-                                 const Real a_metallicity,
-                                 const std::string a_abundances_model)
+                                        const std::vector<unsigned> &a_elements,
+                                        const Real a_metallicity,
+                                        const std::string a_abundances_model)
         {
             // make sure elements are within range
             for (const auto a : a_elements)
