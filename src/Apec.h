@@ -37,6 +37,34 @@
 
 namespace fm::aped
 {
+
+    // return interpolated function (f(x)) value at input position xp
+    template <class T, class R>
+    void linear_interp(std::vector<T> &fp, const std::vector<T> &xp,
+                       const std::vector<R> &f, const std::vector<R> &x)
+    {
+        Timer_t<4> t("Apec::linear_interp");
+
+        std::vector<T> xh(f.size());
+        for (size_t i = 0; i<f.size(); ++i)
+            xh[i] = half * (x[i] + *x[i + 1]);
+
+        size_t ip = 1;
+        for (size_t i = 0; i < fp.size(); ++i)
+        {
+            const T hp = half * (xp[i] + xp[i + 1]);
+            //if (hp>x.front() &&  hp<x.back()) {
+            if (hp > xh.front() && hp < xh.back())
+            {
+                while (hp > xh[ip])
+                    ++ip;
+
+                const T w = (xh[ip] - hp) / (xh[ip] - xh[ip - 1]);
+                fp[i] += (one - w) * f[ip] + w * f[ip - 1];
+            }
+        }
+    }
+
     // compute emissivity spectra using lookup table based on APED
     struct Apec
     {
@@ -53,14 +81,17 @@ namespace fm::aped
              const std::string a_abundances_model = "AndersGrevesse",
              const std::string a_line_broadening = "convolution",
              const bool a_line_emission = true,
-             const bool a_cont_emission = true)
+             const bool a_cont_emission = true,
+             const int a_verbosity = 0)
             : m_spectrum_size(a_num_energy_bins),
               m_abundances_model(a_abundances_model),
               m_line_broadening(a_line_broadening),
               m_line_emission(a_line_emission),
-              m_cont_emission(a_cont_emission)
+              m_cont_emission(a_cont_emission),
+              m_verbosity(a_verbosity)
         {
-            assert((a_line_broadening == "convolution" && a_energy_bin_spacing == "log") ||
+            assert( a_line_broadening == "none" ||
+                   (a_line_broadening == "convolution" && a_energy_bin_spacing == "log") ||
                    (a_line_broadening == "linebyline" && a_energy_bin_spacing == "const"));
 
             // energy log spacing
@@ -120,9 +151,10 @@ namespace fm::aped
             std::vector<unsigned> metals(APED_atomic_numbers + NBBNELEMENTS, APED_atomic_numbers + NUM_APEC_ATOMS);
             build_emissivity_table(m_j_metals, metals, aped);
 
-            std::cout << "  " << '\n';
-            std::cout << "Apec: Apec built successfully " << '\n';
-            std::cout << "  " << '\n';
+            if (m_verbosity > 0)
+            {
+                std::cout << "\nApec::Apec built successfully " << '\n';
+            }
         }
 
         // copy constructor
@@ -154,7 +186,7 @@ namespace fm::aped
                 const Real f = std::abs(log10(a_temperature / (Real)m_temperature[it_lo])) / m_dlog_temp;
 
                 // multiply by ne so that the spectrum remains simply normalized to nH^2
-                const Real ne = m_sd.n_e(a_temperature, a_metallicity);
+                const Real ne = 1.0;//m_sd.n_e(a_temperature, a_metallicity);
 
                 // rename
                 const Real z = a_metallicity;
@@ -163,16 +195,9 @@ namespace fm::aped
                 std::vector<Real> js(buf_spectrum_size);
                 {
                     Timer_t<> t("APED::Apec::emission_spectrum:temp_interpolation");
-
-                    unsigned i = 0;
-                    const Real *jblo = &m_j_bbn_el[it_lo][i]; // bbn low  T
-                    const Real *jbhi = &m_j_bbn_el[it_hi][i]; // bbn high T
-                    const Real *jzlo = &m_j_metals[it_lo][i]; // met low  T
-                    const Real *jzhi = &m_j_metals[it_hi][i]; // met high T
-                    Real *j = &js[i];
-                    while (i++ < buf_spectrum_size)
+                    for (size_t i = 0; i < buf_spectrum_size; ++i)
                     {
-                        *j++ = ne * ((one - f) * (*jblo++ + z * *jzlo++) + f * (*jbhi++ + z * *jzhi++));
+                        js[i] = ne * ((one - f) * (m_j_bbn_el[it_lo][i] + z * m_j_metals[it_lo][i]) + f * (m_j_bbn_el[it_hi][i] + z * m_j_metals[it_hi][i]));
                     }
                 }
 
@@ -182,14 +207,10 @@ namespace fm::aped
                     std::vector<Real> shifted_energy(m_buf_energy.size());
 
                     const Real df = one + a_doppler_shift;
-                    const Real *be = &m_buf_energy[0];
-                    Real *se = &shifted_energy[0];
-                    unsigned i = 0;
-                    while (i++ < m_buf_energy.size())
+                    for (size_t i = 0; i < m_buf_energy.size(); ++i)
                     {
-                        *se++ = df * *be++;
+                        shifted_energy[i] = df * m_buf_energy[i];
                     }
-                    //
 
                     a_spectrum.resize(m_spectrum_size, zero);
                     linear_interp(a_spectrum, m_energy, js, shifted_energy);
@@ -231,11 +252,9 @@ namespace fm::aped
             // resize table
             a_jt.clear();
 
-            // utility to compute abundances re
-            AbundanceUtil ab_ut;
-            //
-            std::list<ElementAbundance> rel_abundances;
-            ab_ut.relative_abundances(rel_abundances, a_elements, dummy_metallicity, m_abundances_model);
+            // compute relative abundances
+            std::vector<ElementAbundance> rel_abundances;
+            AbundanceUtil::relative_abundances(rel_abundances, a_elements, dummy_metallicity, m_abundances_model);
 
             // temperature dimensions
             a_jt.resize(m_temperature.size());
@@ -284,6 +303,7 @@ namespace fm::aped
         std::string m_line_broadening;
         bool m_line_emission;
         bool m_cont_emission;
+        int m_verbosity;
     };
 
 } // namespace fm::aped
