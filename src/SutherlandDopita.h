@@ -38,9 +38,12 @@
 #include "Timer.h" // available at https://github.com/fminiati/mthread-timer
 using namespace fm::profiling;
 #else
+#ifndef TIMER_H
+#define TIMER_H
 template <unsigned T=0> struct Timer_t {
     Timer_t(std::string &&){};
 };
+#endif
 #endif
 
 namespace fm::cooling_tables {
