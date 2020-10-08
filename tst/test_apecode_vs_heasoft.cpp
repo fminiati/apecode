@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
         //                       ra_xspec_spectrum, ra_spectrum_err);
         const int status = calcCEISpectrum(ra_ph_energy, ia_element, ra_el_abundance, doppler_shift,
                                            temperature_kev, emission_measure, false,
-                                           doppler_shift, true, ra_xspec_spectrum, ra_spectrum_err);
+                                           doppler_shift, !line_emission, ra_xspec_spectrum, ra_spectrum_err);
         if (status) std::cerr << " Aped status = " << status << '\n';
         if (verbose)
             std::cout << " done! \n";
