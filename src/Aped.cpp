@@ -262,7 +262,7 @@ namespace fm::aped
     /// continuum spectrum including pseudo continuum
     void Aped::emission_spectrum(std::vector<Real> &a_spectrum,
                                  const std::vector<Real> &a_energy,
-                                 const std::list<ElementAbundance> &a_atom_abundances,
+                                 const std::vector<ElementAbundance> &a_atom_abundances,
                                  const Real a_temperature,
                                  const Real a_doppler_shift,
                                  const std::string a_line_broadening,
@@ -299,12 +299,18 @@ namespace fm::aped
                     // Linear interpolation adopted by original Aped code
                     const Real f = one - std::abs(a_temperature - (Real)m_temperatures[it]) / (m_temperatures[it_lo] * (pow(ten, m_dlog_temp) - one));
 
+                    // add ion emission to spectrum taking into accout io abundance and ionization fraction
+                    auto add_emission_to_spectrum = [&j = a_spectrum, x = f * A.abundance](const std::vector<Real> &i) {
+                        for (size_t k = 0; k < j.size(); ++k)
+                            j[k] += x * i[k];
+                    };
+
                     if (a_line_emission)
                     {
                         Timer_t<2> t("Aped::emission_spectrum:line_emission");
                         // lines
-                        std::vector<Real> spectrum(a_spectrum.size(), 0);
-                        ion_line_emission(spectrum, a_energy, A.atomic_number, 0, it, a_doppler_shift, a_line_broadening);
+                        std::vector<Real> line_emission(a_spectrum.size(), 0);
+                        ion_line_emission(line_emission, a_energy, A.atomic_number, 0, it, a_doppler_shift, a_line_broadening);
 
                         // thermal broadening
                         if (a_line_broadening == "convolution")
@@ -315,34 +321,36 @@ namespace fm::aped
                             //             const Real atomic_mass= AMU_g*el->second.atomic_mass; //m_aped_data[it].elements[A->atomic_number].atomic_mass;
                             //             const Real sigma=sqrt(k_B*a_temperature/atomic_mass) / C_cm_s;
                             //             const Real ksize=(a_energy[1]-a_energy[0])/a_energy[0] / (sqrt(two)*sigma);
-                            const Real sqrt2_sigma = sqrt(2 * k_B * a_temperature / (AMU_g * el->second.atomic_mass)) / C_cm_s;
-                            const Real Elo = one / (sqrt2_sigma);
-                            const Real Ehi = a_energy[1] / a_energy[0] / (sqrt2_sigma);
+                            const Real sigma = std::sqrt(k_B * a_temperature / (AMU_g * el->second.atomic_mass)) / C_cm_s;
+                            const Real Elo = one / (sqrt_two *sigma);
+                            const Real Ehi = a_energy[1] / a_energy[0] / (sqrt_two*sigma);
                             const Real Eline = half * (Elo + Ehi);
 
                             GaussianKernel *kernel = new GaussianKernel(Eline, Elo, Ehi);
-                            simple_convolution(spectrum, kernel);
+                            simple_convolution(line_emission, kernel);
                             delete kernel;
                         }
 
-                        // include abundance factor
-                        add(a_spectrum, spectrum, f * A.abundance);
+                        // add ion line emission
+                        add_emission_to_spectrum(line_emission);
                     }
                     //
-                    if (a_cont_emission)
+                    if (a_cont_emission || a_line_emission)
                     {
                         Timer_t<2> t("Aped::emission_spectrum:cont_emission");
 
                         // continuum
-                        std::vector<Real> spectrum(a_spectrum.size(), 0);
-                        ion_continuum_emission(spectrum,
+                        std::vector<Real> emission(a_spectrum.size(), 0);
+                        ion_continuum_emission(emission,
                                                a_energy,
                                                A.atomic_number,
                                                0, it,
-                                               a_doppler_shift);
+                                               a_doppler_shift,
+                                               a_cont_emission,
+                                               a_line_emission);
 
-                        // include abundance factor
-                        add(a_spectrum, spectrum, f * A.abundance);
+                        // add psd-cont ion emission
+                        add_emission_to_spectrum(emission);
                     }
                 }
             }
@@ -444,10 +452,52 @@ namespace fm::aped
                                       const int a_atomic_number,
                                       const int a_rmJ,
                                       const int a_temp_idx,
-                                      const Real a_doppler_shift) const
+                                      const Real a_doppler_shift,
+                                      const bool a_cont_emission,
+                                      const bool a_pseudo_cont_emission) const
     {
         // resize spectrum vector
         a_spectrum.resize(a_energy.size() - 1, 0);
+
+        auto add_cont_emission_to_spectrum = [&j = a_spectrum, &e = a_energy](const std::vector<float> &js,
+                                                                              const std::vector<float> &es) {
+            Timer_t<4> t("Aped::ion_continuum_emission::add_to_spectrum");
+
+            if (es.back() < e.front() && es.front() > e.back())
+                return;
+
+            size_t k = 0;
+            float ef=e[0], jf = js[0]; // foot point values
+            for (size_t i = 0; i < j.size(); ++i)
+            {
+                if (es.back() > e[i])
+                {
+                    while (es[k] < e[i])
+                        ++k;
+
+                    // reset foot emissivity if need be
+                    if (i==0 && k>0)
+                        jf = js[k - 1] + (js[k] - js[k - 1]) / (es[k] - es[k - 1]) * (ef - es[k - 1]);
+
+                    // loop through source contributions within this e-bin
+                    while (es[k] <= e[i + 1] && k < js.size())
+                    {
+                        j[i] += half * (jf + js[k]) * (es[k] - ef);
+                        jf = js[k];
+                        ef = es[k];
+                        ++k;
+                    }
+                    // add final contribution and reset foot values for next e-bin
+                    if (k < js.size()) // --> es[k] > e[i + 1]
+                    {
+                        const float jh = jf + (js[k] - jf) / (es[k] - ef) * (e[i + 1] - ef);
+                        j[i] += half * (jf + jh) * (e[i + 1] - ef);
+                        jf = jh;
+                        ef = e[i + 1];
+                    }
+                }
+            }
+        };
 
         // find the element at the input temperature bin
         if (const auto ei = m_aped_data[a_temp_idx].elements.find(a_atomic_number); ei != m_aped_data[a_temp_idx].elements.end())
@@ -460,18 +510,26 @@ namespace fm::aped
             {
                 // ion
                 const Ion &ion = it->second;
-                // shift spectra
-                std::vector<float> cnt_enrg_shifted(ion.cont_energy), psd_enrg_shifted(ion.pseudo_cont_energy);
-                if (a_doppler_shift != 0.e0)
+                if (a_cont_emission)
                 {
-                    for (auto &vi : cnt_enrg_shifted)
-                        vi *= (one + a_doppler_shift);
+                    std::vector<float> cont_energy(ion.cont_energy);
+                    if (a_doppler_shift != 0.e0)
+                    {
+                        for (auto &e : cont_energy)
+                            e *= (one + a_doppler_shift);
+                    }
+                    add_cont_emission_to_spectrum(ion.continuum, cont_energy);
                 }
-                for (auto &vi : psd_enrg_shifted)
-                    vi *= (one + a_doppler_shift);
-
-                linear_integrate(a_spectrum, a_energy, ion.continuum, cnt_enrg_shifted);
-                linear_integrate(a_spectrum, a_energy, ion.pseudo_cont, psd_enrg_shifted);
+                if (a_pseudo_cont_emission)
+                {
+                    std::vector<float> pseudo_cont_energy(ion.pseudo_cont_energy);
+                    if (a_doppler_shift != 0.e0)
+                    {
+                        for (auto &e : pseudo_cont_energy)
+                            e *= (one + a_doppler_shift);
+                    }
+                    add_cont_emission_to_spectrum(ion.pseudo_cont, pseudo_cont_energy);
+                }
             }
             else
             {
