@@ -28,7 +28,6 @@
 #include <stdexcept>
 #include <iostream>
 #include <vector>
-#include <list>
 #include <string>
 #include <map>
 #include <cstdlib>
@@ -39,9 +38,12 @@
 #include "Timer.h" // available at https://github.com/fminiati/mthread-timer
 using namespace fm::profiling;
 #else
+#ifndef TIMER_H
+#define TIMER_H
 template <unsigned T=0> struct Timer_t {
     Timer_t(std::string &&){};
 };
+#endif
 #endif
 
 
@@ -54,6 +56,7 @@ namespace fm::aped
     constexpr double one = 1.0e0;
     constexpr double two = 2.0e0;
     constexpr double ten = 1.0e1;
+    constexpr double sqrt_two = std::sqrt(two);
 
     constexpr double TOLERANCE = (1.e-5);
 
@@ -79,91 +82,6 @@ namespace fm::aped
     constexpr double KM_cm = 1.0e5;
     // equivalent to v/c with v=15000 km/sec
     constexpr double MAX_DOPPLER_SHIFT = (0.05);
-
-    // sum - add second vector to first
-    template <class T>
-    void add(std::vector<T> &va, const std::vector<T> &vb, const T f)
-    {
-        assert(va.size() == vb.size());
-
-        unsigned i = 0;
-        unsigned n = va.size();
-        T *a = &va[0];
-        const T *b = &vb[0];
-        while (i++ < n)
-            *a++ += f * *b++;
-    }
-
-    // return interpolated function (f(x)) value at input position xp
-    template <class T>
-    T linear_interp(const T xp, const std::vector<T> &x, const std::vector<T> &f)
-    {
-        Timer_t<4> t("Aped::linear_interp_t");
-
-        if (xp < x.front() || xp >= x.back())
-            return T(0);
-
-        size_t i = 0;
-        while (xp > x[i])
-            ++i;
-
-        return ((f[i] - f[i - 1]) / (x[i] - x[i - 1]) * (xp - x[i]) + f[i]);
-    }
-
-    // return interpolated function (f(x)) value at input position xp
-    template <class T, class R>
-    void linear_interp(std::vector<T> &fp, const std::vector<T> &xp,
-                       const std::vector<R> &f, const std::vector<R> &x)
-    {
-        Timer_t<4> t("Aped::linear_interp_tr");
-
-        std::vector<T> xh(f.size());
-        {
-            const R *xl = &x[0];
-            const R *xr = &x[1];
-            Real *x = &xh[0];
-            unsigned i = xh.size();
-            while (i-- > 0)
-            {
-                *x++ = half * (*xl++ + *xr++);
-            }
-        }
-
-        size_t ip = 1;
-        for (size_t i = 0; i < fp.size(); ++i)
-        {
-            const T hp = half * (xp[i] + xp[i + 1]);
-            //if (hp>x.front() &&  hp<x.back()) {
-            if (hp > xh.front() && hp < xh.back())
-            {
-                while (hp > xh[ip])
-                    ++ip;
-
-                const T w = (xh[ip] - hp) / (xh[ip] - xh[ip - 1]);
-                fp[i] += (one - w) * f[ip] + w * f[ip - 1];
-            }
-        }
-    }
-
-    // return interpolated function (f(x)) value at input position xp
-    template <class T, class R>
-    void linear_integrate(std::vector<T> &fp, const std::vector<T> &xp,
-                          const std::vector<R> &f, const std::vector<R> &x)
-    {
-        Timer_t<4> t("Aped::linear_integrate");
-
-        size_t ip = 0;
-        for (size_t i = 0; i < fp.size(); ++i)
-        {
-            const T hp = half * (xp[i] + xp[i + 1]);
-            if (hp >= x.front() && hp <= x.back())
-            {
-                while (hp > x[ip])
-                    ++ip;
-                fp[i] += ((f[ip] - f[ip - 1]) / (x[ip] - x[ip - 1]) * (hp - x[ip]) + f[ip]) * (xp[i + 1] - xp[i]);
-            }
-        }
-    }
 
     // virtual base class for kernel
     struct LineKernel
@@ -288,7 +206,7 @@ namespace fm::aped
         Real abundance;
     };
 
-    // utility to compute abundances to be used in aped API
+    // Compute abundances relative to Anders and Grevesse which is assumed in Aped emissivities
     struct AbundanceUtil
     {
         // constructor
@@ -297,7 +215,7 @@ namespace fm::aped
         ~AbundanceUtil() {}
 
         // compute abundances relative to AndersGrevesse
-        void relative_abundances(std::list<ElementAbundance> &a_relative_abundances,
+        static void relative_abundances(std::vector<ElementAbundance> &a_relative_abundances,
                                  const std::vector<unsigned> &a_elements,
                                  const Real a_metallicity,
                                  const std::string a_abundances_model)
@@ -490,9 +408,8 @@ namespace fm::aped
                                const bool a_cont_emission) const
         {
             // utility to compute abundances re
-            AbundanceUtil ab_ut;
-            std::list<ElementAbundance> rel_ab;
-            ab_ut.relative_abundances(rel_ab, a_elements, a_metallicity, a_abundances_model);
+            std::vector<ElementAbundance> rel_ab;
+            AbundanceUtil::relative_abundances(rel_ab, a_elements, a_metallicity, a_abundances_model);
 
             // compute spectrum
             this->emission_spectrum(a_spectrum, a_energy, rel_ab, a_temperature,
@@ -503,7 +420,7 @@ namespace fm::aped
         // overloaded version of emission spectrum in ph cm^3 s^-1
         void emission_spectrum(std::vector<Real> &a_spectrum,
                                const std::vector<Real> &a_energy,
-                               const std::list<ElementAbundance> &a_atom_abundances,
+                               const std::vector<ElementAbundance> &a_atom_abundances,
                                const Real a_temperature,
                                const Real a_doppler_shift,
                                const std::string a_line_broadening,
@@ -525,7 +442,9 @@ namespace fm::aped
                                     const int a_atomic_number,
                                     const int a_rmJ,
                                     const int a_temp_idx,
-                                    const Real a_doppler_shift) const;
+                                    const Real a_doppler_shift,
+                                    const bool a_cont_emission,
+                                    const bool a_pseudo_cont_emission) const;
 
     protected:
         // do simple convolution with gaussian weights
@@ -589,7 +508,7 @@ namespace fm::aped
         double m_dlog_temp;
         // verbosity, zero by default
         int m_verbosity;
-        //
+
         std::vector<double> m_temperatures;
         std::vector<double> m_density;
         std::vector<int> m_num_lines;
