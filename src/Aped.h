@@ -87,8 +87,36 @@ namespace fm::aped
         LineKernel() {}
         ~LineKernel() {}
 
-        virtual int wing_size() const = 0;
-        virtual Real val(const int index) const = 0;
+        // convolve spectrum with this kernel
+        inline void convolve(std::vector<Real> &a_f) const
+        {
+            Timer_t<4> t("LineKernel::convolution");
+
+            std::vector<Real> convolution(a_f.size(), 0);
+            for (size_t i = 0; i < a_f.size(); ++i)
+            {
+                convolve(convolution, a_f[i], i);
+            }
+            a_f.assign(convolution.begin(), convolution.end());
+        }
+
+        // convolve single line emission with kernel
+        inline void convolve(std::vector<Real> &a_c,
+                             const Real a_line,
+                             const size_t a_pos) const
+        {
+            Timer_t<4> t("LineKernel::line_profile");
+
+            const size_t lo = std::max(a_pos - wing_size(), (size_t)0);
+            const size_t hi = std::min(a_pos + wing_size(), a_c.size() - 1);
+            for (size_t i = lo; i <= hi; ++i)
+            {
+                a_c[i] += a_line * weight(i - a_pos);
+            }
+        }
+
+        virtual size_t wing_size() const = 0;
+        virtual Real weight(const size_t index) const = 0;
     };
 
     // gaussian kernel
@@ -145,15 +173,15 @@ namespace fm::aped
 
         virtual ~GaussianKernel() {}
 
-        virtual int wing_size() const
+        virtual size_t wing_size() const
         {
             return m_wing_size;
         }
 
         // peak is centered at m_wing_size
-        virtual Real val(const int a_index) const
+        virtual Real weight(const size_t a_index) const override
         {
-            return (Real)m_w.at(a_index + m_wing_size);
+            return (Real)m_w[a_index + m_wing_size];
         }
 
     protected:
@@ -161,7 +189,6 @@ namespace fm::aped
         std::vector<double> m_w;
     };
 
-    //
     // data
     static const unsigned atomic_numbers[NUM_APED_ATOMS] = {
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
@@ -343,9 +370,9 @@ namespace fm::aped
             {
                 assert(a_atomic_number <= NUM_APED_ATOMS);
 
-                Element E(APED_atom_names[a_atomic_number - 1],
+                Element E(atom_names[a_atomic_number - 1],
                           a_atomic_number,
-                          APED_atomic_masses[a_atomic_number - 1]);
+                          atomic_masses[a_atomic_number - 1]);
 
                 elements.insert(std::pair<unsigned, Element>(a_atomic_number, E));
             }
@@ -443,62 +470,6 @@ namespace fm::aped
                                     const Real a_doppler_shift,
                                     const bool a_cont_emission,
                                     const bool a_pseudo_cont_emission) const;
-
-    protected:
-        // do simple convolution with gaussian weights
-        void simple_convolution(std::vector<Real> &a_spectrum,
-                                const LineKernel *a_kernel) const
-        {
-            Timer_t<4> t("Aped::simple_convolution");
-
-            const int kwing = a_kernel->wing_size();
-
-            std::vector<Real> convolution(a_spectrum.size(), 0);
-
-            for (size_t i = 0; i < a_spectrum.size(); ++i)
-            {
-                // don't convolve for nothing
-                if (a_spectrum[i] > 0)
-                {
-                    for (int j = -kwing; j <= kwing; ++j)
-                    {
-                        if (i + j >= 0 && i + j < a_spectrum.size())
-                            convolution[i + j] += a_spectrum[i] * a_kernel->val(j);
-                    }
-                }
-            }
-            // replace spectrum with convolution
-            a_spectrum.assign(convolution.begin(), convolution.end());
-        }
-
-        // add gaussian profile of line emission
-        void line_profile(std::vector<Real> &a_spectrum,
-                          std::vector<Real> &a_energy,
-                          const Real a_line_energy,
-                          const Real a_line_emissivity,
-                          const LineKernel *a_kernel) const
-        {
-            Timer_t<4> t("Aped::line_profile");
-
-            if (a_line_energy >= a_energy.front() && a_line_energy < a_energy.back())
-            {
-                // find line energy bin
-                int ie = 0;
-                while (a_energy[ie] < a_line_energy)
-                    ++ie;
-                ie = std::max(0, ie - 1);
-
-                // use gaussian kernel
-                const size_t kwing = a_kernel->wing_size();
-
-                for (size_t j = -kwing; j <= kwing; ++j)
-                {
-                    if (ie + j >= 0 && ie + j < a_spectrum.size())
-                        a_spectrum[ie + j] += a_line_emissivity * a_kernel->val(j);
-                }
-            }
-        }
-
     protected:
         // temperature data
         std::vector<TemperatureRecord> m_aped_data;
