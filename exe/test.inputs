@@ -58,7 +58,7 @@ aped.use_cont_emission=1
 # no line broadening
 aped.line_broadening=none
 
-# number of elements
+# number of elements - aped contains up to 28
 aped.num_elements=30
 
 # empty vector means all elements
