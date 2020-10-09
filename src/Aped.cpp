@@ -404,9 +404,6 @@ namespace fm::aped
                         }
                     }
                 }
-                // if a_rmJ==0 we are done
-                if (a_rmJ != 0)
-                    break;
             }
             // thermal broadening
             if (a_line_broadening == "convolution")
