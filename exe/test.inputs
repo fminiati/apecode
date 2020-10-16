@@ -27,6 +27,9 @@
 aped.aped_file_path= /Users/francesco.miniati/Work/clab/atomdb_v3.0.9
 aped.aped_version=3.0.9
 
+# verbosity
+aped.verbosity = 1;
+
 # min and max ph energy
 aped.min_ph_energy[keV]=0.1
 aped.max_ph_energy[keV]=12.0
@@ -35,7 +38,7 @@ aped.max_ph_energy[keV]=12.0
 aped.use_log_energy_scale=1
 
 # spectral resolution
-aped.spectral_energy_resolution=0.1
+aped.spectral_energy_resolution=0.01
 
 # plasma temperature in keV
 aped.plasma_temperature[keV]=5
@@ -55,11 +58,21 @@ aped.use_line_emission=1
 # use line emission (0=no,1=yes)
 aped.use_cont_emission=1
 
-# no line broadening
-aped.line_broadening=none
+# line broadening mechanism
+# 0 = none - turned off
+# 1 = thermal
+# 2 = turbulent
+aped.line_broadening=0
+
+# line shape
+# delta = 0
+# gaussian = 1
+# lorentzian = 2
+# pseudovoigt = 3
+aped.line_shape=0
 
 # number of elements - aped contains up to 28
-aped.num_elements=28
+aped.num_elements=10
 
 # empty vector means all elements
 aped.elements=  1 2 3 4 5 6 7 8 9 10          \
