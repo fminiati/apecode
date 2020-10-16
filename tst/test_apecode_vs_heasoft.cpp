@@ -8,7 +8,6 @@
 #include "Aped.h" // this is from $HEADAS/include
 
 #include "../src/Aped.h" // header files with same name but from ../src
-#include "FitsUtil.h"
 #include "FileParser.h"
 
 int main(int argc, char *argv[])
@@ -45,6 +44,9 @@ int main(int argc, char *argv[])
     const std::string cocofile = aped_file_path + "/apec_v"+aped_version+"_coco.fits";
     const std::string linefile = aped_file_path + "/apec_v"+aped_version+"_line.fits";
 
+    int verbosity;
+    input.get_item(verbosity, "aped.verbosity");
+
     // min and max ph energy
     double emin = 0.0;
     double emax = -1.0;
@@ -73,7 +75,7 @@ int main(int argc, char *argv[])
     input.get_item(velocity, "aped.plasma_velocity[cm/s]");
 
     // Doppler shift
-    const double doppler_shift = velocity / fm::aped::c_cgs;
+    const double doppler_shift = velocity / fm::aped::c_light_cgs;
 
     // metallicity
     double metallicity = 0.3;
@@ -92,8 +94,18 @@ int main(int argc, char *argv[])
     input.get_item(cont_emission, "aped.use_cont_emission");
 
     // no line broadening
-    std::string line_broadening;
-    input.get_item(line_broadening, "aped.line_broadening");
+    int int_line_broadening = 0;
+    input.get_item(int_line_broadening, "aped.line_broadening");
+    fm::aped::LineBroadening line_broadening=static_cast<fm::aped::LineBroadening>(int_line_broadening);
+
+    // default is delta function
+    fm::aped::LineShape line_shape = static_cast<fm::aped::LineShape>(0);
+    if (int_line_broadening)
+    {
+        int int_line_shape = 0;
+        input.get_item(int_line_shape, "aped.line_shape");
+        line_shape = static_cast<fm::aped::LineShape>(int_line_shape);
+    }
 
     // number of elements
     int num_elements;
@@ -118,7 +130,7 @@ int main(int argc, char *argv[])
     std::cout << "\nmax spectral energy in keV reset to=" << emax << '\n';
 
     std::cout << "\nbuilding fm::aped::aped... ";
-    fm::aped::Aped fm_aped(aped_file_path, aped_version);
+    fm::aped::Aped fm_aped(aped_file_path, aped_version, verbosity);
     std::cout << " done! \n";
 
     // Initializes data directory locations needed by the models.
@@ -148,22 +160,26 @@ int main(int argc, char *argv[])
         // std::cout << " xspec abund = " << FunctionUtility::getAbundance(A)
         //   << " xspec A&G abund = " << FunctionUtility::getAbundance("angr", A) << '\n';
 
-        std::vector<fm::aped::ElementAbundance> el_abundance;
-        fm::aped::AbundanceUtil::relative_abundances(el_abundance, std::vector<unsigned>(1, A), metallicity, abundance_model);
-
+        std::vector<unsigned> elements(1, A);
         std::vector<double> fm_aped_spectrum;
         if (verbose)
             std::cout << " computing emission_spectrum with fm::aped... ";
         fm_aped.emission_spectrum(fm_aped_spectrum,
                                   ph_energy,
-                                  el_abundance,
+                                  elements,
+                                  abundance_model,
+                                  metallicity,
                                   temperature,
                                   doppler_shift,
-                                  line_broadening,
+                                  cont_emission,
                                   line_emission,
-                                  cont_emission);
+                                  line_shape,
+                                  line_broadening);
         if (verbose)
             std::cout << " done! \n";
+
+        std::vector<fm::aped::ElementAbundance> el_abundance;
+        fm::aped::AbundanceUtil::relative_abundances(el_abundance, std::vector<unsigned>(1, A), metallicity, abundance_model);
 
         const Real temperature_kev = temperature / fm::aped::keVToKelvin;
         //const Real temperature_broadening = 0.000861739; //0.e0; //temperature / fm::aped::keVtoKelvin;
@@ -173,7 +189,7 @@ int main(int argc, char *argv[])
         // RealArray is a std::valarray<Real>
         const RealArray ra_el_abundance( el_abundance[0].abundance, 1);
         const RealArray ra_ph_energy(&ph_energy[0], ph_energy.size());
-        RealArray ra_xspec_spectrum(zero, ph_energy.size()-1), ra_spectrum_err(zero, ph_energy.size()-1);
+        RealArray ra_xspec_spectrum(0.0, ph_energy.size()-1), ra_spectrum_err(0.0, ph_energy.size()-1);
 
         if (verbose)
             std::cout << " computing emission_spectrum with xspec's aped... ";
@@ -181,7 +197,7 @@ int main(int argc, char *argv[])
         //                       temperature_kev, temperature_broadening, emission_measure,
         //                       ra_xspec_spectrum, ra_spectrum_err);
         const int status = calcCEISpectrum(ra_ph_energy, ia_element, ra_el_abundance, doppler_shift,
-                                           temperature_kev, emission_measure, false,
+                                           temperature_kev, emission_measure, int_line_broadening,
                                            doppler_shift, !line_emission, ra_xspec_spectrum, ra_spectrum_err);
         if (status) std::cerr << " Aped status = " << status << '\n';
         if (verbose)
@@ -189,7 +205,7 @@ int main(int argc, char *argv[])
 
         auto rel_diff = [](const auto a, const auto b) {
             const auto c = 0.5 * (a + b);
-            return (c > 0 ? std::abs(a - b) / b : zero);
+            return (c > 0 ? std::abs(a - b) / b : fm::aped::zero);
         };
 
         double aped_vs_xspec_max_rel_diff = 0.0;
