@@ -35,18 +35,26 @@
 
 #ifdef zero
 #undef zero
-#endif
 #include "fitsio.h"
-#ifndef zero
 #define zero (0.0e0)
+#else
+#include "fitsio.h"
 #endif
 
 #define MAXDIM 7
 
 namespace fm::fits_util {
 
-  void print_fits_error(const int status, const std::string s={});
-  
+  void print_fits_error(const int status, const std::string s={})
+  {
+      if (status)
+      {
+          // print error report
+          fits_report_error(stderr, status);
+          throw std::runtime_error("A FITS error occurred" + s);
+      }
+  }
+
   template <class T> int fits_data_type(T t)
   {
     if      (typeid(T).name() == typeid(char) .name()) return TSBYTE;
