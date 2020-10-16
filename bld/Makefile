@@ -6,15 +6,16 @@ EXEDIR = ../exe/
 TSTDIR = ../tst/
 HEADAS = /usr/local/lib/heasoft/heasoft-6.28/x86_64-apple-darwin19.6.0/
 
-#CC     = /opt/local/bin/clang-mp-9.0 #/opt/local/bin/gcc-mp-10
-#CXX    = /opt/local/bin/clang++-mp-9.0 #/opt/local/bin/g++-mp-10
+#CC     = /opt/local/bin/clang-mp-10 #/opt/local/bin/gcc-mp-10
+#CXX    = /opt/local/bin/clang++-mp-10 #/opt/local/bin/g++-mp-10
 CC     = /opt/local/bin/gcc-mp-10  #/opt/local/bin/clang-mp-9.0 #/opt/local/bin/gcc-mp-10
 CXX    = /opt/local/bin/g++-mp-10 #/opt/local/bin/clang++-mp-9.0 #/opt/local/bin/g++-mp-10
-FC     = /opt/local/bin/gfortran-mp-10
+#FC     = /opt/local/bin/gfortran-mp-10
+LD     = /opt/local/bin/gcc-mp-10
 OPTS   = -std=c++17 -O2 -g -Wall -DUSE_APED
 
-OBJ = aped_spectrum.o Aped.o FitsUtil.o
-OBJTST = test_apecode_vs_heasoft.o Aped.o FitsUtil.o
+OBJ = aped_spectrum.o Aped.o
+OBJTST = test_apecode_vs_heasoft.o Aped.o
 
 LIBS   = $(LIB) -lstdc++ -lm -lcfitsio
 HEADASINCL= -I$(HEADAS)include
@@ -51,6 +52,3 @@ test_apecode_vs_heasoft.o: $(TSTDIR)test_apecode_vs_heasoft.cpp
 
 Aped.o: $(SRCDIR)Aped.cpp
 	$(CXX) $(OPTS) $(INCL) -c $(SRCDIR)Aped.cpp
-
-FitsUtil.o: $(SRCDIR)FitsUtil.cpp
-	$(CXX) $(OPTS) $(INCL) -c $(SRCDIR)FitsUtil.cpp
