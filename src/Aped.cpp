@@ -24,7 +24,6 @@
 #define MAXSTRLEN 1024
 #define READONLY 0 // options when opening a file
 
-#include <algorithm>
 #include <cassert>
 #include "Aped.h"
 #include "FitsUtil.h"
@@ -35,7 +34,7 @@ namespace fm::aped
 
     // full construtor
     Aped::Aped(const std::string a_aped_path, const std::string a_version, const int a_verbosity)
-        : m_verbosity(a_verbosity)
+        : m_verbosity{a_verbosity}, m_energy_spacing{Spacing::undetermined}
     {
         Timer_t<> t("Aped::define");
 
@@ -194,7 +193,6 @@ namespace fm::aped
                 //assert(num_pseudo.size()==(size_t)m_num_pseudo.at(hdu-3));
                 assert(ctemperature == m_temperatures.at(hdu - 3));
 
-                //
                 std::vector<std::vector<float>> enrg_cont(num_rows), continuum(num_rows), enrg_pseudo(num_rows), pseudo(num_rows);
                 for (int r = 0; r < num_rows; ++r)
                 {
@@ -249,278 +247,13 @@ namespace fm::aped
                 m_aped_data.emplace_back(temp_record);
 
             } // loop over hdus
-        } // timer
+        }     // timer
 
         if (m_verbosity > 0)
         {
             std::cout << "  " << std::endl;
             std::cout << " Aped Code was built successfully using fits files in " << a_aped_path << std::endl;
             std::cout << "  " << std::endl;
-        }
-    }
-
-    /// continuum spectrum including pseudo continuum
-    void Aped::emission_spectrum(std::vector<Real> &a_spectrum,
-                                 const std::vector<Real> &a_energy,
-                                 const std::vector<ElementAbundance> &a_atom_abundances,
-                                 const Real a_temperature,
-                                 const Real a_doppler_shift,
-                                 const std::string a_line_broadening,
-                                 const bool a_line_emission,
-                                 const bool a_cont_emission) const
-    {
-        Timer_t<> t("Aped::emission_spectrum");
-        // sanity check, catch miscommunications
-        assert(a_line_broadening == "none" || a_line_broadening == "convolution" || a_line_broadening == "linebyline");
-
-        // initialize spectrum
-        a_spectrum.resize(a_energy.size() - 1, 0);
-
-        // check temperature range
-        const Real T_min = (Real)*std::min_element(m_temperatures.begin(), m_temperatures.end());
-        const Real T_max = (Real)*std::max_element(m_temperatures.begin(), m_temperatures.end());
-
-        // if T is within allowed range
-        if (a_temperature >= T_min && a_temperature <= T_max)
-        {
-            // identify right bin
-            const int it_lo = (int)floor(log10(a_temperature / T_min) / m_dlog_temp);
-            const int it_hi = std::min((size_t)it_lo + 1, m_temperatures.size() - 1);
-            assert(a_temperature >= (Real)m_temperatures[it_lo] && a_temperature <= (Real)m_temperatures[it_hi]);
-
-            // loop over all elements
-            for (const auto &A : a_atom_abundances)
-            {
-                // loop over temp bins
-                for (int it = it_lo; it <= it_hi; ++it)
-                {
-                    // temperature interpolation coefficient: interp. in log space, following log spacing of temperature tabulation
-                    // const Real f=one - std::abs(log10(a_temperature/(Real)m_temperatures[it]))/m_dlog_temp;
-                    // Linear interpolation adopted by original Aped code
-                    const Real f = one - std::abs(a_temperature - (Real)m_temperatures[it]) / (m_temperatures[it_lo] * (pow(ten, m_dlog_temp) - one));
-
-                    // add ion emission to spectrum taking into accout io abundance and ionization fraction
-                    auto add_emission_to_spectrum = [&j = a_spectrum, x = f * A.abundance](const std::vector<Real> &i) {
-                        for (size_t k = 0; k < j.size(); ++k)
-                            j[k] += x * i[k];
-                    };
-
-                    if (a_line_emission)
-                    {
-                        Timer_t<2> t("Aped::emission_spectrum:line_emission");
-
-                        std::vector<Real> line_emission(a_spectrum.size(), 0);
-                        ion_line_emission(line_emission, a_energy, A.atomic_number, 0, it, a_doppler_shift, a_line_broadening);
-
-                        // add ion line emission
-                        add_emission_to_spectrum(line_emission);
-                    }
-                    //
-                    if (a_cont_emission || a_line_emission)
-                    {
-                        Timer_t<2> t("Aped::emission_spectrum:cont_emission");
-
-                        // continuum
-                        std::vector<Real> emission(a_spectrum.size(), 0);
-                        ion_continuum_emission(emission,
-                                               a_energy,
-                                               A.atomic_number,
-                                               0, it,
-                                               a_doppler_shift,
-                                               a_cont_emission,
-                                               a_line_emission);
-
-                        // add psd-cont ion emission
-                        add_emission_to_spectrum(emission);
-                    }
-                }
-            }
-        }
-    }
-
-    //
-    void Aped::ion_line_emission(std::vector<Real> &a_spectrum,
-                                 const std::vector<Real> &a_energy,
-                                 const int a_atomic_number,
-                                 const int a_rmJ,
-                                 const int a_temp_idx,
-                                 const Real a_doppler_shift,
-                                 const std::string a_line_broadening) const
-    {
-        // resize spectrum vector
-        a_spectrum.resize(a_energy.size() - 1, 0);
-
-        // count num lines
-        size_t num_elines = 0;
-
-        // find the element at the input temperature bin
-        if (const auto ei = m_aped_data[a_temp_idx].elements.find(a_atomic_number);
-            ei != m_aped_data[a_temp_idx].elements.end())
-        {
-            const Element &atom = ei->second;
-
-            // thermal velocity (kT/m)^1/2
-            const Real x_thermal = sqrt_two * std::sqrt(kB_cgs * m_temperatures[a_temp_idx] / (AMU_cgs * atom.atomic_mass)) / c_cgs;
-
-            // if ionization state (rmJ) == 0 then add up all ions, else select ionization state according to input
-            const auto beg = a_rmJ == 0 ? atom.ions.begin() : atom.ions.find(a_rmJ);
-            const auto end = a_rmJ == 0 ? atom.ions.end() : (beg != atom.ions.end() ? std::next(beg) : beg);
-            for (auto ii=beg; ii != end; ++ii)
-            {
-                // set ion pointer
-                const Ion &ion = ii->second;
-                assert(ion.line_emissivity.size() == ion.line_energy.size());
-
-                // loop thorugh emission lines; ie is the energy bin of line
-                int ie = 0;
-                for (size_t il = 0; il < ion.line_emissivity.size(); ++il)
-                {
-                    // doppler shifted photon energy
-                    const Real e_line = ion.line_energy[il] * (one + a_doppler_shift);
-
-                    if (e_line >= a_energy.front() && e_line < a_energy.back())
-                    {
-                        ++num_elines;
-
-                        // find e-bin
-                        while (a_energy[ie] < e_line)
-                            ++ie;
-                        ie = (ie > 0 ? ie - 1 : ie);
-
-                        // add thermal broadening
-                        if (a_line_broadening == "linebyline")
-                        {
-                            Timer_t<4> t("Aped::ion_line_emission:linebyline_broadening");
-                            // use gaussian kernel: thermal broadening c_th/c * e_line
-                            const Real sqr2_sigma = x_thermal * e_line;
-
-                            GaussianKernel kernel(e_line/sqr2_sigma, a_energy[ie]/sqr2_sigma, a_energy[ie+1]/sqr2_sigma);
-                            kernel.convolve(a_spectrum, ion.line_emissivity[il], ie);
-                        }
-                        else
-                        {
-                            // add to spectrum
-                            a_spectrum[ie] += ion.line_emissivity[il]; 
-                        }
-                    }
-                }
-            }
-            // thermal broadening
-            if (a_line_broadening == "convolution")
-            {
-                Timer_t<3> t("Aped::emission_spectrum:line_convolution");
-                const Real Elo = one / x_thermal;
-                const Real Ehi = Elo * a_energy[1] / a_energy[0];
-                const Real Eline = half * (Elo + Ehi);
-
-                GaussianKernel kernel(Eline, Elo, Ehi);
-                kernel.convolve(a_spectrum);
-            }
-        }
-        else
-        {
-            std::cerr << " strangely element " << a_atomic_number << " was not found " << std::endl;
-        }
-
-        if (m_verbosity > 0)
-        {
-            std::cout << " added " << num_elines << " to spectrum " << std::endl;
-        }
-    }
-
-    // continuum
-    void Aped::ion_continuum_emission(std::vector<Real> &a_spectrum,
-                                      const std::vector<Real> &a_energy,
-                                      const int a_atomic_number,
-                                      const int a_rmJ,
-                                      const int a_temp_idx,
-                                      const Real a_doppler_shift,
-                                      const bool a_cont_emission,
-                                      const bool a_pseudo_cont_emission) const
-    {
-        // resize spectrum vector
-        a_spectrum.resize(a_energy.size() - 1, 0);
-
-        auto add_cont_emission_to_spectrum = [&j = a_spectrum, &e = a_energy](const std::vector<float> &js,
-                                                                              const std::vector<float> &es) {
-            Timer_t<4> t("Aped::ion_continuum_emission::add_to_spectrum");
-
-            if (es.back() < e.front() && es.front() > e.back())
-                return;
-
-            size_t k = 0;
-            float ef=e[0], jf = js[0]; // foot point values
-            for (size_t i = 0; i < j.size(); ++i)
-            {
-                if (es.back() > e[i])
-                {
-                    while (es[k] < e[i])
-                        ++k;
-
-                    // reset foot emissivity if need be
-                    if (i==0 && k>0)
-                        jf = js[k - 1] + (js[k] - js[k - 1]) / (es[k] - es[k - 1]) * (ef - es[k - 1]);
-
-                    // loop through source contributions within this e-bin
-                    while (es[k] <= e[i + 1] && k < js.size())
-                    {
-                        j[i] += half * (jf + js[k]) * (es[k] - ef);
-                        jf = js[k];
-                        ef = es[k];
-                        ++k;
-                    }
-                    // add final contribution and reset foot values for next e-bin
-                    if (k < js.size()) // --> es[k] > e[i + 1]
-                    {
-                        const float jh = jf + (js[k] - jf) / (es[k] - ef) * (e[i + 1] - ef);
-                        j[i] += half * (jf + jh) * (e[i + 1] - ef);
-                        jf = jh;
-                        ef = e[i + 1];
-                    }
-                }
-            }
-        };
-
-        // find the element at the input temperature bin
-        if (const auto ei = m_aped_data[a_temp_idx].elements.find(a_atomic_number); ei != m_aped_data[a_temp_idx].elements.end())
-        {
-            const Element &atom = ei->second;
-
-            // if ionization state (rmJ) == 0 then add up all ions, else select ionization state according to input
-            if (const auto &it = atom.ions.find(a_rmJ); it != atom.ions.end())
-            {
-                const Ion &ion = it->second;
-
-                if (a_cont_emission)
-                {
-                    std::vector<float> cont_energy(ion.cont_energy);
-                    if (a_doppler_shift != 0.e0)
-                    {
-                        for (auto &e : cont_energy)
-                            e *= (one + a_doppler_shift);
-                    }
-                    add_cont_emission_to_spectrum(ion.continuum, cont_energy);
-                }
-
-                if (a_pseudo_cont_emission)
-                {
-                    std::vector<float> pseudo_cont_energy(ion.pseudo_cont_energy);
-                    if (a_doppler_shift != 0.e0)
-                    {
-                        for (auto &e : pseudo_cont_energy)
-                            e *= (one + a_doppler_shift);
-                    }
-                    add_cont_emission_to_spectrum(ion.pseudo_cont, pseudo_cont_energy);
-                }
-            }
-            else
-            {
-                std::cerr << " strangely ion " << a_rmJ << " was not found " << std::endl;
-            }
-        }
-        else
-        {
-            std::cerr << " strangely element " << a_atomic_number << " was not found " << std::endl;
         }
     }
 } // namespace fm::aped
