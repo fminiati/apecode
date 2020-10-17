@@ -67,7 +67,7 @@ namespace fm::aped
     // Speed of light in cm s^-1
     constexpr double c_light_cgs = 2.9979246e10;
 
-    enum class LineShape
+    enum class LineShape : char
     {
         delta = 0,
         gaussian = 1,
@@ -75,7 +75,7 @@ namespace fm::aped
         pseudovoigt = 3
     };
 
-    enum class LineBroadening
+    enum class LineBroadening : char
     {
         none = 0,
         thermal = 1,
@@ -85,7 +85,7 @@ namespace fm::aped
 
     struct Spacing
     {
-        enum type
+        enum type : char
         {
             undetermined = 0,
             irregular = 1,
