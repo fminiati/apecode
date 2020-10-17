@@ -209,22 +209,22 @@ namespace fm::aped
 
                 // loop over elements
                 TemperatureRecord temp_record;
-                temp_record.temperature = temperature;
+                temp_record.m_temperature = temperature;
 
                 // parse emission line data
                 for (int l = 0; l < num_lines; ++l)
                 {
                     // make sure record contains relevant element and ion
                     temp_record.check_element(element[l]);
-                    temp_record.elements[element[l]].check_ion(ion[l]);
-                    //if (element[l]==3) std::cout << " A(3) " << temp_record.elements[element[l]].atomic_number << std::endl;
+                    temp_record.m_elements[element[l]].check_ion(ion[l]);
+                    //if (element[l]==3) std::cout << " A(3) " << temp_record.elements[element[l]].m_atomic_number << std::endl;
 
-                    temp_record.elements[element[l]].ions[ion[l]].line_energy.emplace_back(keVToAngstrom / lambda[l]);
-                    temp_record.elements[element[l]].ions[ion[l]].line_emissivity.emplace_back(epsilon[l]);
-                    temp_record.elements[element[l]].ions[ion[l]].lower_level.emplace_back(lower_lev[l]);
-                    temp_record.elements[element[l]].ions[ion[l]].upper_level.emplace_back(upper_lev[l]);
-                    // temp_record.elements[element[l]].ions[ion[l]].line_energy_err    .emplace_back( keVToAngstrom/lambda_err[l] );
-                    // temp_record.elements[element[l]].ions[ion[l]].line_emissivity_err.emplace_back( epsilon_err[l] );
+                    temp_record.m_elements[element[l]].m_ions[ion[l]].m_line_energy.emplace_back(keVToAngstrom / lambda[l]);
+                    temp_record.m_elements[element[l]].m_ions[ion[l]].m_line_emissivity.emplace_back(epsilon[l]);
+                    temp_record.m_elements[element[l]].m_ions[ion[l]].m_lower_level.emplace_back(lower_lev[l]);
+                    temp_record.m_elements[element[l]].m_ions[ion[l]].m_upper_level.emplace_back(upper_lev[l]);
+                    // temp_record.m_elements[element[l]].m_ions[ion[l]].line_energy_err    .emplace_back( keVToAngstrom/lambda_err[l] );
+                    // temp_record.m_elements[element[l]].m_ions[ion[l]].line_emissivity_err.emplace_back( epsilon_err[l] );
                 }
 
                 // parse continuum emission
@@ -232,16 +232,16 @@ namespace fm::aped
                 {
                     // make sure record contains relevant element and ion
                     temp_record.check_element(Z[r]);
-                    temp_record.elements[Z[r]].check_ion(rmJ[r]);
+                    temp_record.m_elements[Z[r]].check_ion(rmJ[r]);
 
-                    temp_record.elements[Z[r]].ions[rmJ[r]].cont_energy = enrg_cont[r];
-                    temp_record.elements[Z[r]].ions[rmJ[r]].continuum = continuum[r];
-                    temp_record.elements[Z[r]].ions[rmJ[r]].pseudo_cont_energy = enrg_pseudo[r];
-                    temp_record.elements[Z[r]].ions[rmJ[r]].pseudo_cont = pseudo[r];
+                    temp_record.m_elements[Z[r]].m_ions[rmJ[r]].m_cont_energy = enrg_cont[r];
+                    temp_record.m_elements[Z[r]].m_ions[rmJ[r]].m_continuum = continuum[r];
+                    temp_record.m_elements[Z[r]].m_ions[rmJ[r]].m_pseudo_cont_energy = enrg_pseudo[r];
+                    temp_record.m_elements[Z[r]].m_ions[rmJ[r]].m_pseudo_cont = pseudo[r];
                     // std::cout << " e_c size= " << enrg_cont.size() << ", n rows= " << num_cont[r] <<
-                    // " tr-e_c size= " << temp_record.elements[Z[r]].ions[rmJ[r]].cont_energy.size()  << std::endl;
+                    // " tr-e_c size= " << temp_record.m_elements[Z[r]].m_ions[rmJ[r]].m_cont_energy.size()  << std::endl;
                 }
-                assert(temp_record.elements.size() == NUM_APED_ATOMS);
+                assert(temp_record.m_elements.size() == NUM_APED_ATOMS);
 
                 // finally add data to table
                 m_aped_data.emplace_back(temp_record);

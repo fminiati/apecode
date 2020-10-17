@@ -185,9 +185,9 @@ int main(int argc, char *argv[])
         //const Real temperature_broadening = 0.000861739; //0.e0; //temperature / fm::aped::keVtoKelvin;
         const Real emission_measure = 1.e-14;
         // IntegerArray is  a std::vector<int>
-        const IntegerArray ia_element(1,el_abundance[0].atomic_number);
+        const IntegerArray ia_element(1,el_abundance[0].m_atomic_number);
         // RealArray is a std::valarray<Real>
-        const RealArray ra_el_abundance( el_abundance[0].abundance, 1);
+        const RealArray ra_el_abundance( el_abundance[0].m_abundance, 1);
         const RealArray ra_ph_energy(&ph_energy[0], ph_energy.size());
         RealArray ra_xspec_spectrum(0.0, ph_energy.size()-1), ra_spectrum_err(0.0, ph_energy.size()-1);
 
