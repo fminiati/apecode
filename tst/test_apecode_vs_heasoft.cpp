@@ -115,6 +115,9 @@ int main(int argc, char *argv[])
     std::vector<unsigned> elements(num_elements);
     input.get_items(elements, "aped.elements");
 
+    double kernel_tolerance;
+    input.get_item(kernel_tolerance, "aped.kernel_tolerance");
+
     // spectral energy and emission
     std::vector<double> ph_energy(1, emin);
     {
@@ -174,7 +177,8 @@ int main(int argc, char *argv[])
                                   cont_emission,
                                   line_emission,
                                   line_shape,
-                                  line_broadening);
+                                  line_broadening,
+                                  kernel_tolerance);
         if (verbose)
             std::cout << " done! \n";
 
