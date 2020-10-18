@@ -231,7 +231,7 @@ namespace fm::aped
         }
 
         // data
-        Real m_temperature;
+        double m_temperature;
         // map atomic number to element
         std::map<unsigned, Element> m_elements;
     };
@@ -255,7 +255,7 @@ namespace fm::aped
             return m_temperatures.size();
         }
         // tabulated temperatures
-        std::vector<Real> temperatures() const
+        std::vector<double> temperatures() const
         {
             return m_temperatures;
         }
@@ -264,7 +264,6 @@ namespace fm::aped
         {
             return m_dlog_temp;
         }
-
         //
         int num_elements() const
         {
@@ -282,7 +281,8 @@ namespace fm::aped
                                const bool a_cont_emission,
                                const bool a_line_emission,
                                const LineShape a_line_profile,
-                               const LineBroadening a_line_broadening) const
+                               const LineBroadening a_line_broadening,
+                               const Real a_kernel_tolerance = 1.e-6) const
         {
             // utility to compute abundances re
             std::vector<ElementAbundance> rel_ab;
@@ -292,26 +292,29 @@ namespace fm::aped
             switch (a_line_profile)
             {
                 case LineShape::delta :
-                    emission_spectrum<LineProfile<Delta, Delta>>(a_spectrum, a_energy, rel_ab,
-                                                                 a_temperature, a_doppler_shift,
-                                                                 a_cont_emission, a_line_emission);
+                    emission_spectrum<LineProfile<Delta, NoBroadening>>(a_spectrum, a_energy, rel_ab,
+                                                                        a_temperature, a_doppler_shift,
+                                                                        a_cont_emission, a_line_emission,
+                                                                        a_kernel_tolerance);
                     break;
                 case LineShape::gaussian:
                     emission_spectrum<LineProfile<Gaussian, ThermalBroadening>>(a_spectrum, a_energy, rel_ab,
                                                                                 a_temperature, a_doppler_shift,
-                                                                                a_cont_emission, a_line_emission);
+                                                                                a_cont_emission, a_line_emission,
+                                                                                a_kernel_tolerance);
                     break;
                 case LineShape::lorentzian:
                     emission_spectrum<LineProfile<Lorentzian, ThermalBroadening>>(a_spectrum, a_energy, rel_ab,
                                                                                   a_temperature, a_doppler_shift,
-                                                                                  a_cont_emission, a_line_emission);
+                                                                                  a_cont_emission, a_line_emission,
+                                                                                  a_kernel_tolerance);
                     break;
                 case LineShape::pseudovoigt:
                     using LP = LineProfile<PseudoVoigt,PseudoVoigtBroadening<ThermalBroadening,ThermalBroadening>>;
                     //using PVB = PseudoVoigtBroadening;
                     emission_spectrum<LP>(a_spectrum, a_energy, rel_ab,
                                           a_temperature, a_doppler_shift,
-                                          a_cont_emission, a_line_emission);
+                                          a_cont_emission, a_line_emission, a_kernel_tolerance);
                     break;
                 default:
                     std::cerr << "\n LineShape " << static_cast<int>(a_line_profile) << "was not recognised, aped will return!\n\n";
@@ -320,7 +323,7 @@ namespace fm::aped
 
 
         // photon emission spectrum in ph cm^3 s^-1
-        template<typename Profile>
+        template <typename Profile>
         void emission_spectrum(std::vector<Real> &a_spectrum,
                                const std::vector<Real> &a_energy,
                                const std::vector<unsigned> &a_elements, // can be empty to mean all
@@ -329,7 +332,8 @@ namespace fm::aped
                                const Real a_temperature,
                                const Real a_doppler_shift,
                                const bool a_cont_emission,
-                               const bool a_line_emission) const
+                               const bool a_line_emission,
+                               const Real a_kernel_tolerance) const
         {
             // utility to compute abundances re
             std::vector<ElementAbundance> rel_ab;
@@ -338,38 +342,43 @@ namespace fm::aped
             // compute spectrum
             emission_spectrum<Profile>(a_spectrum, a_energy, rel_ab,
                                        a_temperature, a_doppler_shift,
-                                       a_cont_emission, a_line_emission);
+                                       a_cont_emission, a_line_emission,
+                                       a_kernel_tolerance);
         }
 
         // overloaded version of emission spectrum in ph cm^3 s^-1
-        template<typename Profile>
+        template <typename Profile>
         void emission_spectrum(std::vector<Real> &a_spectrum,
                                const std::vector<Real> &a_energy,
                                const std::vector<ElementAbundance> &a_atom_abundances,
                                const Real a_temperature,
                                const Real a_doppler_shift,
                                const bool a_cont_emission,
-                               const bool a_line_emission) const;
+                               const bool a_line_emission,
+                               const Real a_kernel_tolerance) const;
 
     protected:
         // single ion emission line spectrum
-        template<typename Profile>
+        template <typename Profile>
         void ion_line_emission(std::vector<Real> &a_spectrum,
                                const std::vector<Real> &a_energy,
                                const int a_atomic_number,
                                const int a_rmJ,
-                               const int a_temp_idx,
-                               const Real a_doppler_shift) const;
+                               const int a_temp_bin,
+                               const Real a_doppler_shift,
+                               const Real a_kernel_tolerance) const;
         // continuum
-        template<typename Profile>
+        template <typename Profile>
         void ion_continuum_emission(std::vector<Real> &a_spectrum,
                                     const std::vector<Real> &a_energy,
                                     const int a_atomic_number,
                                     const int a_rmJ,
-                                    const int a_temp_idx,
+                                    const int a_temp_bin,
                                     const Real a_doppler_shift,
                                     const bool a_cont_emission,
-                                    const bool a_pseudo_cont_emission) const;
+                                    const bool a_pseudo_cont_emission,
+                                    const Real a_kernel_tolerance) const;
+
     protected:
         // temperature data
         std::vector<TemperatureRecord> m_aped_data;
@@ -401,8 +410,14 @@ namespace fm::aped
                                  const Real a_temperature,
                                  const Real a_doppler_shift,
                                  const bool a_cont_emission,
-                                 const bool a_line_emission) const
+                                 const bool a_line_emission,
+                                 const Real a_kernel_tolerance) const
     {
+        static_assert(std::conjunction_v<std::is_same<line_shape_t<Profile>, Delta>,
+                                         std::is_same<line_broadening_t<Profile>, NoBroadening>> ||
+                          std::negation_v<std::disjunction<std::is_same<line_shape_t<Profile>, Delta>,
+                                                           std::is_same<line_broadening_t<Profile>, NoBroadening>>>,
+                      "Inconsistent Line Profile: choose Delta profile if and only if NoBroadening broadening mechanism.");
         Timer_t<> t("Aped::emission_spectrum");
 
         // initialize spectrum
@@ -420,20 +435,20 @@ namespace fm::aped
         if (a_temperature >= T_min && a_temperature <= T_max)
         {
             // identify right bin
-            const int it_lo = (int)floor(log10(a_temperature / T_min) / m_dlog_temp);
-            const int it_hi = std::min((size_t)it_lo + 1, m_temperatures.size() - 1);
-            assert(a_temperature >= (Real)m_temperatures[it_lo] && a_temperature <= (Real)m_temperatures[it_hi]);
+            const int temp_bin_lo = (int)floor(log10(a_temperature / T_min) / m_dlog_temp);
+            const int temp_bin_hi = std::min((size_t)temp_bin_lo + 1, m_temperatures.size() - 1);
+            assert(a_temperature >= (Real)m_temperatures[temp_bin_lo] && a_temperature <= (Real)m_temperatures[temp_bin_hi]);
 
             // loop over all elements
             for (const auto &A : a_atom_abundances)
             {
                 // loop over temp bins
-                for (int it = it_lo; it <= it_hi; ++it)
+                for (int temp_bin = temp_bin_lo; temp_bin <= temp_bin_hi; ++temp_bin)
                 {
                     // temperature interpolation coefficient: interp. in log space, following log spacing of temperature tabulation
                     // const Real f=one - std::abs(log10(a_temperature/(Real)m_temperatures[it]))/m_dlog_temp;
                     // Linear interpolation adopted by original Aped code
-                    const Real f = one - std::abs(a_temperature - (Real)m_temperatures[it]) / (m_temperatures[it_lo] * (pow(ten, m_dlog_temp) - one));
+                    const Real f = one - std::abs(a_temperature - (Real)m_temperatures[temp_bin]) / (m_temperatures[temp_bin_lo] * (pow(ten, m_dlog_temp) - one));
 
                     // add ion emission to spectrum taking into accout io abundance and ionization fraction
                     auto add_emission_to_spectrum = [x = f * A.m_abundance](std::vector<Real> &j, const std::vector<Real> &i) {
@@ -450,8 +465,9 @@ namespace fm::aped
                                                    a_energy,
                                                    A.m_atomic_number,
                                                    0,
-                                                   it,
-                                                   a_doppler_shift);
+                                                   temp_bin,
+                                                   a_doppler_shift,
+                                                   a_kernel_tolerance);
 
                         // add ion line emission
                         add_emission_to_spectrum(a_spectrum, line_emission);
@@ -466,10 +482,11 @@ namespace fm::aped
                         ion_continuum_emission<Profile>(emission,
                                                         a_energy,
                                                         A.m_atomic_number,
-                                                        0, it,
+                                                        0, temp_bin,
                                                         a_doppler_shift,
                                                         a_cont_emission,
-                                                        a_line_emission);
+                                                        a_line_emission,
+                                                        a_kernel_tolerance);
 
                         // add true and/or psd cont emission
                         add_emission_to_spectrum(a_spectrum, emission);
@@ -484,56 +501,59 @@ namespace fm::aped
                                  const std::vector<Real> &a_energy,
                                  const int a_atomic_number,
                                  const int a_rmJ,
-                                 const int a_temp_idx,
-                                 const Real a_doppler_shift) const
+                                 const int a_temp_bin,
+                                 const Real a_doppler_shift,
+                                 const Real a_kernel_tolerance) const
     {
         // resize spectrum vector
         a_spectrum.resize(a_energy.size() - 1);
         std::memset(&a_spectrum[0], 0, sizeof(Real) * a_spectrum.size());
 
         // count num lines
-        size_t num_elines = 0;
+        size_t num_lines = 0;
 
         // find the element at the input temperature bin
-        if (const auto el_iterator = m_aped_data[a_temp_idx].m_elements.find(a_atomic_number);
-            el_iterator != m_aped_data[a_temp_idx].m_elements.end())
+        if (const auto el_iterator = m_aped_data[a_temp_bin].m_elements.find(a_atomic_number);
+            el_iterator != m_aped_data[a_temp_bin].m_elements.end())
         {
             const Element &atom = el_iterator->second;
 
             // if ionization state (rmJ) == 0 then add up all ions, else select ionization state according to input
             const auto beg = a_rmJ == 0 ? atom.m_ions.begin() : atom.m_ions.find(a_rmJ);
             const auto end = a_rmJ == 0 ? atom.m_ions.end() : (beg != atom.m_ions.end() ? std::next(beg) : beg);
-            for (auto ii = beg; ii != end; ++ii)
+            for (auto ion_iterator = beg; ion_iterator != end; ++ion_iterator)
             {
                 // set ion pointer
-                const Ion &ion = ii->second;
+                const Ion &ion = ion_iterator->second;
                 assert(ion.m_line_emissivity.size() == ion.m_line_energy.size());
 
-                // loop thorugh emission lines; ie is the energy bin of line
-                int ie = 0;
-                for (size_t il = 0; il < ion.m_line_emissivity.size(); ++il)
+                // loop thorugh emission lines
+                int energy_bin = 0;
+                for (size_t i_line = 0; i_line < ion.m_line_emissivity.size(); ++i_line)
                 {
                     // doppler shifted photon energy
-                    const Real e_line = ion.m_line_energy[il] * (one + a_doppler_shift);
+                    const Real line_energy = ion.m_line_energy[i_line] * (one + a_doppler_shift);
 
-                    if (e_line >= a_energy.front() && e_line < a_energy.back())
+                    if (line_energy >= a_energy.front() && line_energy < a_energy.back())
                     {
-                        ++num_elines;
+                        ++num_lines;
 
-                        // find e-bin
-                        while (a_energy[ie] < e_line)
-                            ++ie;
-                        ie = (ie > 0 ? ie - 1 : ie);
+                        while (a_energy[energy_bin] < line_energy)
+                            ++energy_bin;
+                        energy_bin = (energy_bin > 0 ? energy_bin - 1 : energy_bin);
 
-                        if constexpr (std::is_same_v<Profile,LineProfile<Delta,Delta>>)
+                        if constexpr (std::is_same_v<line_shape_t<Profile>,Delta>)
                         {
-                            a_spectrum[ie] += ion.m_line_emissivity[il];
+                            a_spectrum[energy_bin] += ion.m_line_emissivity[i_line];
                         }
                         else
                         {
                             Timer_t<4> t("Aped::ion_line_emission:convolution");
-                            const Real line_fwhm = Profile::fwhm(m_temperatures[a_temp_idx], AMU_cgs * atom.m_atomic_mass, e_line);
-                            Convolution::convolve<Profile>(a_spectrum, ion.m_line_emissivity[il], e_line, line_fwhm, ie, a_energy);
+                            const Real line_fwhm = Profile::fwhm(m_temperatures[a_temp_bin],
+                                                                 AMU_cgs * atom.m_atomic_mass, line_energy);
+                            Convolution::convolve<Profile>(a_spectrum, ion.m_line_emissivity[i_line],
+                                                           line_energy, line_fwhm, energy_bin, 
+                                                           a_energy, a_kernel_tolerance);
                         }
                     }
                 }
@@ -546,7 +566,7 @@ namespace fm::aped
 
         if (m_verbosity > 0)
         {
-            std::cout << " added " << num_elines << " emission lines to the spectrum " << std::endl;
+            std::cout << " added " << num_lines << " emission lines to the spectrum " << std::endl;
         }
     }
 
@@ -556,10 +576,11 @@ namespace fm::aped
                                       const std::vector<Real> &a_energy,
                                       const int a_atomic_number,
                                       const int a_rmJ,
-                                      const int a_temp_idx,
+                                      const int a_temp_bin,
                                       const Real a_doppler_shift,
                                       const bool a_cont_emission,
-                                      const bool a_psd_cont_emission) const
+                                      const bool a_psd_cont_emission,
+                                      const Real a_kernel_tolerance) const
     {
         auto add_cont_emission_to_spectrum = [&j = a_continuum, &e = a_energy](const std::vector<float> &js,
                                                                                const std::vector<float> &es) {
@@ -606,14 +627,14 @@ namespace fm::aped
         std::memset(&a_continuum[0], 0, sizeof(Real) * a_continuum.size());
 
         // find the element at the input temperature bin
-        if (const auto ei = m_aped_data[a_temp_idx].m_elements.find(a_atomic_number); ei != m_aped_data[a_temp_idx].m_elements.end())
+        if (const auto el_iterator = m_aped_data[a_temp_bin].m_elements.find(a_atomic_number); el_iterator != m_aped_data[a_temp_bin].m_elements.end())
         {
-            const Element &atom = ei->second;
+            const Element &atom = el_iterator->second;
 
             // if ionization state (rmJ) == 0 then add up all ions, else select ionization state according to input
-            if (const auto &it = atom.m_ions.find(a_rmJ); it != atom.m_ions.end())
+            if (const auto &ion_iterator = atom.m_ions.find(a_rmJ); ion_iterator != atom.m_ions.end())
             {
-                const Ion &ion = it->second;
+                const Ion &ion = ion_iterator->second;
 
                 if (a_psd_cont_emission)
                 {
@@ -625,25 +646,24 @@ namespace fm::aped
                     }
                     add_cont_emission_to_spectrum(ion.m_pseudo_cont, pseudo_cont_energy);
 
-                    if constexpr (!std::is_same_v<Profile,LineProfile<Delta,Delta>>)
+                    if constexpr (!std::is_same_v<line_shape_t<Profile>,Delta>)
                     {
                         Timer_t<3> t("Aped::ion_continuum_emission:convolution");
 
                         if (Spacing::is_uniform(m_energy_spacing) &&  broadening_spacing_v<Profile> == m_energy_spacing)
                         {
-                            const Real x_fwhm = Profile::fwhm(m_temperatures[a_temp_idx], AMU_cgs * atom.m_atomic_mass, one);
+                            const Real x_fwhm = Profile::fwhm(m_temperatures[a_temp_bin], AMU_cgs * atom.m_atomic_mass, one);
                             const Real mesh_size = m_energy_spacing == Spacing::log_uniform ? a_energy[1] / a_energy[0] : a_energy[1] - a_energy[0];
-                            LineKernel<Profile> kernel(mesh_size/x_fwhm);
-                            Convolution::convolve(a_continuum, kernel);
+                            Convolution::convolve(a_continuum, build_kernel<Profile>(mesh_size / x_fwhm, a_kernel_tolerance));
                         }
                         else
                         {
                             // need to calculate fwhm for eacg energy to properly set eta in case of voigt profile
-                            const Real x_fwhm = Profile::fwhm(m_temperatures[a_temp_idx], AMU_cgs * atom.m_atomic_mass, one);
+                            const Real x_fwhm = Profile::fwhm(m_temperatures[a_temp_bin], AMU_cgs * atom.m_atomic_mass, one);
                             std::vector<Real> fwhm(a_continuum.size());
                             for (size_t i = 0; i < fwhm.size(); ++i)
                                 fwhm[i] =  x_fwhm* half * (a_energy[i] + a_energy[i + 1]);
-                            Convolution::convolve<Profile>(a_continuum, a_energy, fwhm);
+                            Convolution::convolve<Profile>(a_continuum, a_energy, fwhm, a_kernel_tolerance);
                         }
                     }
                 }
