@@ -50,9 +50,6 @@ namespace fm::aped
     // conversion from keV to Kelvin
     constexpr double keVToKelvin = 1.1604505e7;
 
-    // set tolerance for convolution ops to float precision as atomdb is float
-    constexpr double KERNEL_TOL = std::numeric_limits<float>::epsilon();
-
     constexpr double zero = 0.0e0;
     constexpr double half = 0.5e0;
     constexpr double one = 1.0e0;
@@ -129,6 +126,11 @@ namespace fm::aped
     using spacing_t = Spacing::type;
 
     // broadening mechanism determining FWHM of emission lines and its corresponding type of spacing
+    struct NoBroadening
+    {
+        static constexpr inline Real fwhm(const Real, const Real, const Real) { return 0; }
+        static constexpr spacing_t spacing() { return Spacing::undetermined; }
+    };
     struct ThermalBroadening
     {
         static constexpr Real sqrt_8_ln2_to_c_cgs = two * sqrt_two * sqrt_ln2 / c_light_cgs;
@@ -171,8 +173,7 @@ namespace fm::aped
     // line shapes
     struct Delta
     {
-        static inline Real area(const Real) { return 1; }
-        static inline Real fwhm(const Real, const Real, const Real) { return 0; }
+        static inline constexpr Real area(const Real) { return 1; }
     };
    
     struct Gaussian
@@ -236,87 +237,33 @@ namespace fm::aped
     template <typename T>
     inline constexpr spacing_t broadening_spacing_v = std::integral_constant<spacing_t, line_broadening_t<T>::spacing()>();
 
-    // kernel object to compute convolutio in case of uniformly spaced grids such that the weights are const.
-    template <typename Profile>
-    struct LineKernel
+    struct Kernel
     {
-        ~LineKernel() {}
+        ~Kernel() {}
 
-        LineKernel(const Real a_mesh_size)
+        Kernel(const int a_left_size, const int a_right_size, const std::vector<Real> a_w)
+            : m_left_wing_size{a_left_size}, m_right_wing_size{a_right_size}, m_w{a_w}
         {
-            static_assert(Spacing::is_uniform(broadening_spacing_v<Profile>), "LineKernel requires const Spacing type");
-            Timer_t<4> t("Aped::LineKernel");
-
-            // compute integral of line shape from line centre to a mesh node along a wing. it is expected to asymptote to
-            // half since the line shape is normalised to one. a_next_mesh_node is a function taking a node
-            // and returning the next thus encapsulating information about the grid structure
-            auto _weights = [](const Real a_centre, const Real a_next_node, const auto a_next_mesh_node) {
-                const Real s = a_next_node > a_centre ? one : -one;
-                std::vector<Real> w(1, line_shape_t<Profile>::area(s * (a_centre - a_next_node)));
-                Real mesh_node = a_next_node;
-                while (half - w.back() > KERNEL_TOL)
-                {
-                    mesh_node = a_next_mesh_node(mesh_node);
-                    w.emplace_back(line_shape_t<Profile>::area(s * (a_centre - mesh_node)));
-                }
-                return w;
-            };
-
-            std::vector<Real> wm, wp;
-            {
-                const Real lo = one, mid = one + half * a_mesh_size, hi = one + a_mesh_size;
-                if constexpr(broadening_spacing_v<Profile> == Spacing::log_uniform)
-                {
-                    wm = _weights(mid, lo, [f = one / a_mesh_size](const Real x) { return f * x; });
-                    wp = _weights(mid, hi, [f = a_mesh_size](const Real x) { return f * x; });
-                }
-                else if constexpr (broadening_spacing_v<Profile> == Spacing::linear_uniform)
-                {
-                    wm = _weights(mid, lo, [dx = a_mesh_size](const Real x) { return x - dx; });
-                    wp = _weights(mid, hi, [dx = a_mesh_size](const Real x) { return x + dx; });
-                }
-            }
-
-            // now go backward, and get the proper weights by subtracting successive erfs
-            // first left wing
-            for (size_t i = wm.size() - 1; i > 0; --i)
-                m_w.emplace_back(wm[i] - wm[i - 1]);
-            // centre
-            m_w.emplace_back(wm[0] + wp[0]);
-            // right wing
-            for (size_t i = 1; i < wp.size(); ++i)
-                m_w.emplace_back(wp[i] - wp[i - 1]);
-
-            m_left_wing_size = wm.size() - 1;
-            m_right_wing_size = wp.size() - 1;
-#ifndef NDEBUG
-            Real sum = zero;
-            for (auto w : wm)
-                sum += w; 
-            for (auto w : wp)
-                sum += w; 
-            assert(abs(one - sum) < KERNEL_TOL);
-#endif
         }
 
-        virtual inline size_t left_wing_size() const 
+        virtual inline int left_wing_size() const
         {
             return m_left_wing_size;
         }
 
-        virtual inline size_t right_wing_size() const 
+        virtual inline int right_wing_size() const
         {
             return m_right_wing_size;
         }
 
         // peak is centered at m_wing_size
-        virtual inline Real weight(const size_t a_index) const 
+        virtual inline Real weight(const int a_index) const
         {
-            return (Real)m_w[a_index + m_left_wing_size];
+            return m_w[a_index + m_left_wing_size];
         }
 
     protected:
-        size_t m_left_wing_size, m_right_wing_size;
+        int m_left_wing_size, m_right_wing_size;
         std::vector<Real> m_w;
     };
 
@@ -327,8 +274,7 @@ namespace fm::aped
         ~Convolution() {}
 
          // convolve spectrum with this kernel
-        template <typename Kernel>
-        static inline void convolve(std::vector<Real> &a_f, const Kernel &a_kernel)
+        static inline void convolve(std::vector<Real> &a_f, Kernel &&a_kernel)
         {
             Timer_t<4> t("LineKernel::convolve_spectrum_kernel");
 
@@ -342,7 +288,6 @@ namespace fm::aped
         }
 
         // convolve single line emission with kernel
-        template <typename Kernel>
         static inline void convolve(std::vector<Real> &a_c,
                                     const Real a_I0,
                                     const size_t a_bin,
@@ -363,7 +308,8 @@ namespace fm::aped
         template <typename Shape>
         static void convolve(std::vector<Real> &a_f,
                              const std::vector<Real> &a_x,
-                             const std::vector<Real> &a_fwhm)
+                             const std::vector<Real> &a_fwhm,
+                             const Real a_tolerance)
         {
             Timer_t<4> t("Aped::GaussianKernel::convolve_spectrum_profile");
 
@@ -371,7 +317,7 @@ namespace fm::aped
             std::memset(&convolution[0], 0, sizeof(Real) * convolution.size());
             for (size_t i = 0; i < a_f.size(); ++i)
             {
-                convolve<Shape>(convolution, a_f[i], half * (a_x[i] + a_x[i + 1]), a_fwhm[i], i, a_x);
+                convolve<Shape>(convolution, a_f[i], half * (a_x[i] + a_x[i + 1]), a_fwhm[i], i, a_x, a_tolerance);
             }
             a_f.swap(convolution);
         }
@@ -382,7 +328,8 @@ namespace fm::aped
                              const Real a_centre,
                              const Real a_fwhm,
                              const size_t a_bin,
-                             const std::vector<Real> &a_x)
+                             const std::vector<Real> &a_x,
+                             const Real a_tolerance)
         {
             Timer_t<4> t("Aped::LineKernel::convolve_once_line_profile");
             assert(a_bin + 1 < a_x.size() && a_centre > a_x[a_bin] && a_centre < a_x[a_bin + 1]);
@@ -394,7 +341,7 @@ namespace fm::aped
 
                 double wm = 0;
                 double err = half - w;
-                for (int i = a_bin - 1; err > KERNEL_TOL && i >= 0; --i)
+                for (int i = a_bin - 1; err > a_tolerance && i >= 0; --i)
                 {
                     wm += w;
                     w = Shape::area(norm * (a_centre - a_x[i])) - wm;
@@ -408,7 +355,7 @@ namespace fm::aped
 
                 double wm = 0;
                 double err = half - w;
-                for (size_t i = a_bin + 1; err > KERNEL_TOL && i < a_c.size(); ++i)
+                for (size_t i = a_bin + 1; err > a_tolerance && i < a_c.size(); ++i)
                 {
                     wm += w;
                     w = Shape::area(norm * (a_x[i + 1] - a_centre)) - wm;
@@ -418,6 +365,59 @@ namespace fm::aped
             }
         }
     };
+
+    template <typename Profile>
+    auto build_kernel(const Real a_length, const Real a_kernel_tol)
+    {
+        static_assert(Spacing::is_uniform(broadening_spacing_v<Profile>), "LineKernel requires const Spacing type");
+
+        // compute integral of shape from centre to a mesh nodes along a wing, which is expected to asymptote to
+        // half. a_next_node is a function taking a node and returning the next in line
+        auto _weights = [a_kernel_tol](const Real a_centre, const Real a_node, const auto a_next_node) {
+            const Real s = a_node > a_centre ? one : -one;
+            std::vector<Real> w(1, line_shape_t<Profile>::area(s * (a_node - a_centre)));
+            Real node = a_node;
+            while (half - w.back() > a_kernel_tol)
+            {
+                node = a_next_node(node);
+                w.emplace_back(line_shape_t<Profile>::area(s * (node - a_centre)));
+            }
+            return w;
+        };
+
+        std::vector<Real> wm, wp, w;
+        {
+            const Real lo = one, mid = one + half * a_length, hi = one + a_length;
+            if constexpr (broadening_spacing_v<Profile> == Spacing::log_uniform)
+            {
+                wm = _weights(mid, lo, [f = one / a_length](const Real x) { return f * x; });
+                wp = _weights(mid, hi, [f = a_length](const Real x) { return f * x; });
+            }
+            else if constexpr (broadening_spacing_v<Profile> == Spacing::linear_uniform)
+            {
+                wm = _weights(mid, lo, [dx = a_length](const Real x) { return x - dx; });
+                wp = _weights(mid, hi, [dx = a_length](const Real x) { return x + dx; });
+            }
+        }
+        // now go backward, and get the proper weights by successive subtraction
+        // first left wing
+        for (size_t i = wm.size() - 1; i > 0; --i)
+            w.emplace_back(wm[i] - wm[i - 1]);
+        // centre
+        w.emplace_back(wm[0] + wp[0]);
+        // right wing
+        for (size_t i = 1; i < wp.size(); ++i)
+            w.emplace_back(wp[i] - wp[i - 1]);
+
+#ifndef NDEBUG
+        Real sum = zero;
+        for (auto x : w)
+            sum += x;
+        assert(abs(one - sum) < two * a_kernel_tol);
+#endif
+
+        return Kernel(wm.size() - 1, wp.size() - 1, w);
+    }
 } // namespace fm::aped
 
 #endif // APED_UTIL_H
