@@ -90,7 +90,7 @@ namespace fm::aped
             assert(ldens_step == cdens_step && status == 0);
 
             // set log temperature step
-            m_dlog_temp = (double)ltemp_step;
+            m_dlog_temp = ltemp_step;
 
             char PARAMETERS[] = "PARAMETERS";
             // now move to parameters HDU in line & coco file
@@ -109,7 +109,7 @@ namespace fm::aped
             assert(status == 0);
 
             // read parameters data: store temp(K) and dens read from HDUs below
-            std::vector<float> lkT;
+            std::vector<Real> lkT;
             read_fits_column(f_line_ptr, lkT, "kT", num_rows);
             //read_fits_column(f_line_ptr,m_density ,"EDensity",num_rows);
             read_fits_column(f_line_ptr, m_num_elements_line, "NElement", num_rows);
@@ -121,7 +121,7 @@ namespace fm::aped
             read_fits_column(f_coco_ptr, m_num_pseudo, "NPseudo", num_rows);
 
             { // sanity check: same temperatures for line and cont emission
-                std::vector<float> ckT;
+                std::vector<Real> ckT;
                 read_fits_column(f_coco_ptr, ckT, "kT", num_rows);
                 for (size_t i = 0; i < ckT.size(); ++i)
                 {
@@ -157,7 +157,7 @@ namespace fm::aped
                 m_density.emplace_back(density);
 
                 std::vector<int> element, ion, upper_lev, lower_lev;
-                std::vector<float> lambda, lambda_err, epsilon, epsilon_err;
+                std::vector<Real> lambda, lambda_err, epsilon, epsilon_err;
                 read_fits_column(f_line_ptr, lambda, "Lambda", num_lines);
                 read_fits_column(f_line_ptr, lambda_err, "Lambda_Err", num_lines);
                 read_fits_column(f_line_ptr, epsilon, "Epsilon", num_lines);
@@ -193,7 +193,7 @@ namespace fm::aped
                 //assert(num_pseudo.size()==(size_t)m_num_pseudo.at(hdu-3));
                 assert(ctemperature == m_temperatures.at(hdu - 3));
 
-                std::vector<std::vector<float>> enrg_cont(num_rows), continuum(num_rows), enrg_pseudo(num_rows), pseudo(num_rows);
+                std::vector<std::vector<Real>> enrg_cont(num_rows), continuum(num_rows), enrg_pseudo(num_rows), pseudo(num_rows);
                 for (int r = 0; r < num_rows; ++r)
                 {
                     enrg_cont[r].resize(num_cont[r]);
