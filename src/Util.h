@@ -46,23 +46,23 @@ namespace fm::aped
     using Real = double;
 
     // conversion from keV to Angstrom
-    constexpr double keVToAngstrom = 12.39854;
+    constexpr Real keVToAngstrom = 12.39841974e0;
     // conversion from keV to Kelvin
-    constexpr double keVToKelvin = 1.1604505e7;
+    constexpr Real keVToKelvin = 1.1604505e7;
 
-    constexpr double zero = 0.0e0;
-    constexpr double half = 0.5e0;
-    constexpr double one = 1.0e0;
-    constexpr double two = 2.0e0;
-    constexpr double ten = 1.0e1;
-    constexpr double pi = 3.1415926535897932e0;
-    constexpr double sqrt_two = 1.4142135623730951e0;
-    constexpr double sqrt_ln2 = 0.8325546111576977e0; //std::sqrt(std::log(2));
+    constexpr Real zero = 0.0e0;
+    constexpr Real half = 0.5e0;
+    constexpr Real one = 1.0e0;
+    constexpr Real two = 2.0e0;
+    constexpr Real ten = 1.0e1;
+    constexpr Real pi = 3.1415926535897932e0;
+    constexpr Real sqrt_two = 1.4142135623730951e0;
+    constexpr Real sqrt_ln2 = 0.8325546111576977e0; //std::sqrt(std::log(2));
 
     // Boltzmann's constant
-    constexpr double kB_cgs = 1.3806488e-16;
+    constexpr Real kB_cgs = 1.380648528e-16; // Xspec values: 1.3806511609069063e-16 
     // Speed of light in cm s^-1
-    constexpr double c_light_cgs = 2.9979246e10;
+    constexpr Real c_light_cgs = 2.99792458e10;
 
     enum class LineShape : char
     {
@@ -136,7 +136,7 @@ namespace fm::aped
         static constexpr Real sqrt_8_ln2_to_c_cgs = two * sqrt_two * sqrt_ln2 / c_light_cgs;
         static inline Real fwhm(const Real a_temp, const Real a_atomic_mass, const Real a_ph_energy)
         {
-            return sqrt_8_ln2_to_c_cgs * std::sqrt(kB_cgs * a_temp / a_atomic_mass);
+            return sqrt_8_ln2_to_c_cgs * std::sqrt(kB_cgs * a_temp / a_atomic_mass) * a_ph_energy;
         }
         static constexpr spacing_t spacing() { return Spacing::log_uniform; }
     };
@@ -336,11 +336,11 @@ namespace fm::aped
 
             const Real norm = two / a_fwhm;
             { // left wing
-                double w = Shape::area(norm * (a_centre - a_x[a_bin]));
+                Real w = Shape::area(norm * (a_centre - a_x[a_bin]));
                 a_c[a_bin] += w * a_I0;
 
-                double wm = 0;
-                double err = half - w;
+                Real wm = zero;
+                Real err = half - w;
                 for (int i = a_bin - 1; err > a_tolerance && i >= 0; --i)
                 {
                     wm += w;
@@ -350,11 +350,11 @@ namespace fm::aped
                 }
             }
             { // right wing
-                double w = Shape::area(norm * (a_x[a_bin + 1] - a_centre));
+                Real w = Shape::area(norm * (a_x[a_bin + 1] - a_centre));
                 a_c[a_bin] += w * a_I0;
 
-                double wm = 0;
-                double err = half - w;
+                Real wm = zero;
+                Real err = half - w;
                 for (size_t i = a_bin + 1; err > a_tolerance && i < a_c.size(); ++i)
                 {
                     wm += w;
@@ -374,7 +374,7 @@ namespace fm::aped
         // compute integral of shape from centre to a mesh nodes along a wing, which is expected to asymptote to
         // half. a_next_node is a function taking a node and returning the next in line
         auto _weights = [a_kernel_tol](const Real a_centre, const Real a_node, const auto a_next_node) {
-            const Real s = a_node > a_centre ? one : -one;
+            const Real s = two * (a_node > a_centre ? one : -one);
             std::vector<Real> w(1, line_shape_t<Profile>::area(s * (a_node - a_centre)));
             Real node = a_node;
             while (half - w.back() > a_kernel_tol)
