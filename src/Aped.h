@@ -52,7 +52,7 @@ template <unsigned T=0> struct Timer_t {
 namespace fm::aped
 {
     // Unified atomic mass constant in g
-    constexpr double AMU_cgs = 1.660538e-24;
+    constexpr Real AMU_cgs = 1.660539040e-24; 
 
     // aped database contains data for 28 species
     constexpr unsigned NUM_APED_ATOMS = 30;
@@ -63,14 +63,14 @@ namespace fm::aped
     static const char *atom_names[NUM_APED_ATOMS] = {
         "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl",
         "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn"};
-    static const float atomic_masses[NUM_APED_ATOMS] = {
+    static const Real atomic_masses[NUM_APED_ATOMS] = {
         1.00794, 4.002602, 6.941, 9.012182, 10.811, 12.0107, 14.0067, 15.9994, 18.9984032, 20.1797,
         22.989770, 24.3050, 26.981538, 28.0855, 30.973761, 32.065, 35.4527, 39.948, 39.0983, 40.078,
         44.955910, 47.867, 50.9415, 51.9961, 54.938049, 55.845, 58.933200, 58.6934, 63.456, 65.39};
-    static const float AndersGrevesseAbundances[NUM_APED_ATOMS] = {
+    static const Real AndersGrevesseAbundances[NUM_APED_ATOMS] = {
         12.0, 10.99, 1.16, 1.15, 2.60, 8.56, 8.05, 8.93, 4.56, 8.09, 6.33, 7.58, 6.47, 7.55, 5.45,
         7.21, 5.50, 6.56, 5.12, 6.36, 3.10, 4.99, 4.00, 5.67, 5.39, 7.67, 4.92, 6.25, 4.21, 4.60};
-    static const float LoddersAbundances[NUM_APED_ATOMS] = {
+    static const Real LoddersAbundances[NUM_APED_ATOMS] = {
         12.0, 10.984, 3.35, 1.48, 2.85, 8.46, 7.90, 8.76, 4.53, 7.95, 6.37, 7.62, 6.54, 7.61, 5.54,
         7.26, 5.33, 6.62, 5.18, 6.41, 3.15, 5.00, 4.07, 5.72, 5.58, 7.54, 4.98, 6.29, 4.34, 4.70};
     // BBN elements
@@ -114,10 +114,10 @@ namespace fm::aped
                 elements.assign(atomic_numbers, atomic_numbers + NUM_APED_ATOMS);
 
             // reference abundance values
-            std::vector<float> ref_ab(AndersGrevesseAbundances, AndersGrevesseAbundances + NUM_APED_ATOMS);
+            std::vector<Real> ref_ab(AndersGrevesseAbundances, AndersGrevesseAbundances + NUM_APED_ATOMS);
 
             // model abundance values
-            std::vector<float> mod_ab;
+            std::vector<Real> mod_ab;
             if (a_abundances_model == "AndersGrevesse")
                 mod_ab.assign(AndersGrevesseAbundances, AndersGrevesseAbundances + NUM_APED_ATOMS);
             else if (a_abundances_model == "Lodders")
@@ -151,16 +151,16 @@ namespace fm::aped
         Ion &operator=(const Ion &) = default;
 
         unsigned m_ion;
-        std::vector<float> m_cont_energy;
-        std::vector<float> m_continuum;
-        std::vector<float> m_continuum_err;
-        std::vector<float> m_pseudo_cont_energy;
-        std::vector<float> m_pseudo_cont;
-        std::vector<float> m_pseudo_cont_err;
-        std::vector<float> m_line_energy;
-        std::vector<float> m_line_energy_err;
-        std::vector<float> m_line_emissivity;
-        std::vector<float> m_line_emissivity_err;
+        std::vector<Real> m_cont_energy;
+        std::vector<Real> m_continuum;
+        std::vector<Real> m_continuum_err;
+        std::vector<Real> m_pseudo_cont_energy;
+        std::vector<Real> m_pseudo_cont;
+        std::vector<Real> m_pseudo_cont_err;
+        std::vector<Real> m_line_energy;
+        std::vector<Real> m_line_energy_err;
+        std::vector<Real> m_line_emissivity;
+        std::vector<Real> m_line_emissivity_err;
         std::vector<int> m_elem_driver;
         std::vector<int> m_ion_driver;
         std::vector<int> m_lower_level;
@@ -176,7 +176,7 @@ namespace fm::aped
         // copy constructors
         Element(const Element &) = default;
         // partial constructor
-        Element(const std::string a_name, const unsigned a_A, const float a_M)
+        Element(const std::string a_name, const unsigned a_A, const Real a_M)
             : m_name(a_name), m_atomic_number(a_A), m_atomic_mass(a_M)
         {}
         // assignment operator
@@ -197,7 +197,7 @@ namespace fm::aped
 
         std::string m_name;
         unsigned m_atomic_number;
-        float m_atomic_mass;
+        Real m_atomic_mass;
 
         // map ionization state to ion
         std::map<unsigned, Ion> m_ions;
@@ -231,7 +231,7 @@ namespace fm::aped
         }
 
         // data
-        double m_temperature;
+        Real m_temperature;
         // map atomic number to element
         std::map<unsigned, Element> m_elements;
     };
@@ -255,12 +255,12 @@ namespace fm::aped
             return m_temperatures.size();
         }
         // tabulated temperatures
-        std::vector<double> temperatures() const
+        std::vector<Real> temperatures() const
         {
             return m_temperatures;
         }
         // temperature table step
-        double temp_log_interv() const
+        Real temp_log_interv() const
         {
             return m_dlog_temp;
         }
@@ -383,14 +383,14 @@ namespace fm::aped
         // temperature data
         std::vector<TemperatureRecord> m_aped_data;
         // log step of temp database
-        double m_dlog_temp;
+        Real m_dlog_temp;
         // verbosity, zero by default
         int m_verbosity;
         // spacing of spectral energy nodes
         mutable spacing_t m_energy_spacing;
 
-        std::vector<double> m_temperatures;
-        std::vector<double> m_density;
+        std::vector<Real> m_temperatures;
+        std::vector<Real> m_density;
         std::vector<int> m_num_lines;
         std::vector<int> m_num_elements_line;
         std::vector<int> m_num_elements_coco;
@@ -417,7 +417,7 @@ namespace fm::aped
                                          std::is_same<line_broadening_t<Profile>, NoBroadening>> ||
                           std::negation_v<std::disjunction<std::is_same<line_shape_t<Profile>, Delta>,
                                                            std::is_same<line_broadening_t<Profile>, NoBroadening>>>,
-                      "Inconsistent Line Profile: choose Delta profile if and only if NoBroadening broadening mechanism.");
+                      "Inconsistent Line Profile: choose Delta profile if and only if NoBroadening is the broadening mechanism.");
         Timer_t<> t("Aped::emission_spectrum");
 
         // initialize spectrum
@@ -445,12 +445,10 @@ namespace fm::aped
                 // loop over temp bins
                 for (int temp_bin = temp_bin_lo; temp_bin <= temp_bin_hi; ++temp_bin)
                 {
-                    // temperature interpolation coefficient: interp. in log space, following log spacing of temperature tabulation
-                    // const Real f=one - std::abs(log10(a_temperature/(Real)m_temperatures[it]))/m_dlog_temp;
-                    // Linear interpolation adopted by original Aped code
+                    // Linear interpolation coefficient as adopted by original Aped code
                     const Real f = one - std::abs(a_temperature - (Real)m_temperatures[temp_bin]) / (m_temperatures[temp_bin_lo] * (pow(ten, m_dlog_temp) - one));
 
-                    // add ion emission to spectrum taking into accout io abundance and ionization fraction
+                    // add ion emission to spectrum taking into account io abundance and ionization fraction
                     auto add_emission_to_spectrum = [x = f * A.m_abundance](std::vector<Real> &j, const std::vector<Real> &i) {
                         for (size_t k = 0; k < j.size(); ++k)
                             j[k] += x * i[k];
@@ -460,7 +458,7 @@ namespace fm::aped
                     {
                         Timer_t<2> t("Aped::emission_spectrum:line_emission");
 
-                        std::vector<Real> line_emission(a_spectrum.size());
+                        std::vector<Real> line_emission;
                         ion_line_emission<Profile>(line_emission,
                                                    a_energy,
                                                    A.m_atomic_number,
@@ -551,8 +549,8 @@ namespace fm::aped
                             Timer_t<4> t("Aped::ion_line_emission:convolution");
                             const Real line_fwhm = Profile::fwhm(m_temperatures[a_temp_bin],
                                                                  AMU_cgs * atom.m_atomic_mass, line_energy);
-                            Convolution::convolve<Profile>(a_spectrum, ion.m_line_emissivity[i_line],
-                                                           line_energy, line_fwhm, energy_bin, 
+                            Convolution::convolve<Profile>(a_spectrum, (Real)ion.m_line_emissivity[i_line],
+                                                           line_energy, line_fwhm, energy_bin,
                                                            a_energy, a_kernel_tolerance);
                         }
                     }
@@ -582,15 +580,15 @@ namespace fm::aped
                                       const bool a_psd_cont_emission,
                                       const Real a_kernel_tolerance) const
     {
-        auto add_cont_emission_to_spectrum = [&j = a_continuum, &e = a_energy](const std::vector<float> &js,
-                                                                               const std::vector<float> &es) {
+        auto add_cont_emission_to_spectrum = [&j = a_continuum, &e = a_energy](const std::vector<Real> &js,
+                                                                               const std::vector<Real> &es) {
             Timer_t<4> t("Aped::ion_continuum_emission::add_to_spectrum");
 
             if (es.back() < e.front() && es.front() > e.back())
                 return;
 
             size_t k = 0;
-            float ef = e[0], jf = js[0]; // foot point values
+            Real ef = e[0], jf = js[0]; // foot point values
             for (size_t i = 0; i < j.size(); ++i)
             {
                 if (es.back() > e[i])
@@ -613,7 +611,7 @@ namespace fm::aped
                     // add final contribution and reset foot values for next e-bin
                     if (k < js.size()) // --> es[k] > e[i + 1]
                     {
-                        const float jh = jf + (js[k] - jf) / (es[k] - ef) * (e[i + 1] - ef);
+                        const Real jh = jf + (js[k] - jf) / (es[k] - ef) * (e[i + 1] - ef);
                         j[i] += half * (jf + jh) * (e[i + 1] - ef);
                         jf = jh;
                         ef = e[i + 1];
@@ -638,7 +636,7 @@ namespace fm::aped
 
                 if (a_psd_cont_emission)
                 {
-                    std::vector<float> pseudo_cont_energy(ion.m_pseudo_cont_energy);
+                    std::vector<Real> pseudo_cont_energy(ion.m_pseudo_cont_energy);
                     if (a_doppler_shift != 0.e0)
                     {
                         for (auto &e : pseudo_cont_energy)
@@ -663,14 +661,14 @@ namespace fm::aped
                             std::vector<Real> fwhm(a_continuum.size());
                             for (size_t i = 0; i < fwhm.size(); ++i)
                                 fwhm[i] =  x_fwhm* half * (a_energy[i] + a_energy[i + 1]);
-                            Convolution::convolve<Profile>(a_continuum, a_energy, fwhm, a_kernel_tolerance);
+                            Convolution::convolve<line_shape_t<Profile>>(a_continuum, a_energy, fwhm, a_kernel_tolerance);
                         }
                     }
                 }
 
                 if (a_cont_emission)
                 {
-                    std::vector<float> cont_energy(ion.m_cont_energy);
+                    std::vector<Real> cont_energy(ion.m_cont_energy);
                     if (a_doppler_shift != 0.e0)
                     {
                         for (auto &e : cont_energy)
