@@ -2,16 +2,20 @@
 #include <iomanip>
 #include <string>
 #include <vector>
+#include <chrono>
 #include <xsFortran.h>
 #include <xsTypes.h>
 #include <FunctionUtility.h>
 #include "Aped.h" // this is from $HEADAS/include
 
 #include "../src/Aped.h" // header files with same name but from ../src
+#include "../src/XspecAped.h" // this is from $HEADAS/include
 #include "FileParser.h"
 
 int main(int argc, char *argv[])
 {
+    using Clock = std::chrono::steady_clock;
+
     // get input file
     bool verbose = false;
     std::string input_file = "unknown";
@@ -141,20 +145,20 @@ int main(int argc, char *argv[])
     FNINIT();
     std::cout << " done! \n";
 
-    // std::cout << "\nbuilding Xspec's aped... ";
-    // Aped std_aped;
-    // const int status = std_aped.Read(cocofile, linefile);
-    // if (status != 0)
-    //     return status;
-    // std::cout << " done! \n";
+    std::cout << "\nbuilding Xspec's aped... ";
+    Aped std_aped;
+    const int status = std_aped.Read(cocofile, linefile);
+    if (status != 0)
+        return status;
+    std::cout << " done! \n";
 
-    // std_aped.SetThermalBroadening(line_broadening != "none");
-    // std_aped.SetVelocityBroadening(velocity);
-    // std_aped.SetNoLines(!line_emission);
-    // std_aped.SetNoResonanceLines(!line_emission);
-    // std_aped.SetMinimumLinefluxForBroadening(zero);
-    // std_aped.SetBroadenPseudoContinuum(line_broadening != "none");
-    //std_aped.SetLogTempInterpolation(log_scale);
+    std_aped.SetThermalBroadening(int_line_broadening==1);
+    std_aped.SetVelocityBroadening(velocity);
+    std_aped.SetNoLines(!line_emission);
+    //std_aped.SetNoResonanceLines(!line_emission);
+    std_aped.SetMinimumLinefluxForBroadening(fm::aped::zero);
+    //std_aped.SetBroadenPseudoContinuum(line_broadening != "none");
+    std_aped.SetLogTempInterpolation(false);
 
     for (const auto A : elements)
     {
@@ -167,43 +171,61 @@ int main(int argc, char *argv[])
         std::vector<double> fm_aped_spectrum;
         if (verbose)
             std::cout << " computing emission_spectrum with fm::aped... ";
-        fm_aped.emission_spectrum(fm_aped_spectrum,
-                                  ph_energy,
-                                  elements,
-                                  abundance_model,
-                                  metallicity,
-                                  temperature,
-                                  doppler_shift,
-                                  cont_emission,
-                                  line_emission,
-                                  line_shape,
-                                  line_broadening,
-                                  kernel_tolerance);
+        std::chrono::duration<double, std::micro> fm_aped_dur;
+        {
+            const auto t_i{Clock::now()};
+            fm_aped.emission_spectrum(fm_aped_spectrum,
+                                      ph_energy,
+                                      elements,
+                                      abundance_model,
+                                      metallicity,
+                                      temperature,
+                                      doppler_shift,
+                                      cont_emission,
+                                      line_emission,
+                                      line_shape,
+                                      line_broadening,
+                                      kernel_tolerance);
+            const auto t_e{Clock::now()};
+            fm_aped_dur = t_e - t_i;
+        }
         if (verbose)
             std::cout << " done! \n";
 
         std::vector<fm::aped::ElementAbundance> el_abundance;
-        fm::aped::AbundanceUtil::relative_abundances(el_abundance, std::vector<unsigned>(1, A), metallicity, abundance_model);
+        fm::aped::AbundanceUtil::relative_abundances(el_abundance,
+                                                     std::vector<unsigned>(1, A),
+                                                     metallicity,
+                                                     abundance_model);
 
         const Real temperature_kev = temperature / fm::aped::keVToKelvin;
         //const Real temperature_broadening = 0.000861739; //0.e0; //temperature / fm::aped::keVtoKelvin;
         const Real emission_measure = 1.e-14;
         // IntegerArray is  a std::vector<int>
-        const IntegerArray ia_element(1,el_abundance[0].m_atomic_number);
+        const IntegerArray ia_element(1, el_abundance[0].m_atomic_number);
         // RealArray is a std::valarray<Real>
-        const RealArray ra_el_abundance( el_abundance[0].m_abundance, 1);
+        const RealArray ra_el_abundance(el_abundance[0].m_abundance, 1);
         const RealArray ra_ph_energy(&ph_energy[0], ph_energy.size());
-        RealArray ra_xspec_spectrum(0.0, ph_energy.size()-1), ra_spectrum_err(0.0, ph_energy.size()-1);
+        RealArray ra_xspec_spectrum(0.0, ph_energy.size() - 1), ra_spectrum_err(0.0, ph_energy.size() - 1);
 
         if (verbose)
             std::cout << " computing emission_spectrum with xspec's aped... ";
-        // std_aped.SumEqSpectra(ra_ph_energy, ia_element, ra_el_abundance, doppler_shift,
-        //                       temperature_kev, temperature_broadening, emission_measure,
-        //                       ra_xspec_spectrum, ra_spectrum_err);
-        const int status = calcCEISpectrum(ra_ph_energy, ia_element, ra_el_abundance, doppler_shift,
-                                           temperature_kev, emission_measure, int_line_broadening,
-                                           doppler_shift, !line_emission, ra_xspec_spectrum, ra_spectrum_err);
-        if (status) std::cerr << " Aped status = " << status << '\n';
+
+        std::chrono::duration<double, std::micro> xspec_dur;
+        {
+            const auto t_i{Clock::now()};
+            std_aped.SumEqSpectra(ra_ph_energy, ia_element, ra_el_abundance,
+                                  doppler_shift, temperature_kev, emission_measure,
+                                  ra_xspec_spectrum, ra_spectrum_err);
+            const auto t_e{Clock::now()};
+            xspec_dur = t_e - t_i;
+        }
+        // const int status = xspec::calcCEISpectrum(ra_ph_energy, ia_element, ra_el_abundance, doppler_shift,
+        // const int status = calcCEISpectrum(ra_ph_energy, ia_element, ra_el_abundance, doppler_shift,
+        //                                    temperature_kev, emission_measure, int_line_broadening,
+        //                                    doppler_shift, !line_emission, ra_xspec_spectrum, ra_spectrum_err);
+        if (status)
+            std::cerr << " Aped status = " << status << '\n';
         if (verbose)
             std::cout << " done! \n";
 
@@ -215,8 +237,9 @@ int main(int argc, char *argv[])
         double aped_vs_xspec_max_rel_diff = 0.0;
         for (size_t i = 0; i < fm_aped_spectrum.size(); ++i)
         {
-            aped_vs_xspec_max_rel_diff = std::max(aped_vs_xspec_max_rel_diff,rel_diff(fm_aped_spectrum[i],ra_xspec_spectrum[i]));
+            aped_vs_xspec_max_rel_diff = std::max(aped_vs_xspec_max_rel_diff, rel_diff(fm_aped_spectrum[i], ra_xspec_spectrum[i]));
         }
+        std::cout << " Timing: fm_aped: " << fm_aped_dur.count() << "us, xspec_aped: " << xspec_dur.count() << " us\n";
         std::cout << " Max Relative Diff fm::aped vs xspec's aped= " << std::setw(10) << std::setprecision(4) << std::scientific << aped_vs_xspec_max_rel_diff
                   << '\n';
 
