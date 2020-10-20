@@ -24,8 +24,11 @@
 #
 
 # read in path
-aped.aped_file_path= ../../atomdb_v3.0.9
+aped.aped_file_path= /Users/francesco.miniati/Work/clab/atomdb_v3.0.9
 aped.aped_version=3.0.9
+
+# verbosity
+aped.verbosity = 1;
 
 # min and max ph energy
 aped.min_ph_energy[keV]=0.1
@@ -54,6 +57,30 @@ aped.use_line_emission=1
 
 # use line emission (0=no,1=yes)
 aped.use_cont_emission=1
+
+# line broadening mechanism
+# 0 = none - turned off
+# 1 = thermal
+# 2 = turbulent
+aped.line_broadening=1
+
+# line shape
+# delta = 0
+# gaussian = 1
+# lorentzian = 2
+# pseudovoigt = 3
+aped.line_shape=1
+
+# error tolerance for calculation of kernel weights
+aped.kernel_tolerance=1.e-8
+
+# number of elements - aped contains up to 28
+aped.num_elements=28
+
+# empty vector means all elements
+aped.elements=  1 2 3 4 5 6 7 8 9 10          \
+                11 12 13 14 15 16 17 18 19 20 \
+                21 22 23 24 25 26 27 28 29 30
 
 # output file
 aped.output_file_name=emissivity_1keV

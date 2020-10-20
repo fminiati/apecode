@@ -33,7 +33,6 @@
 #endif
 #include "Aped.h"
 #include "FileParser.h"
-#include "FitsUtil.h"
 
 int main(int argc, char *argv[])
 {
@@ -96,7 +95,7 @@ int main(int argc, char *argv[])
     input.get_item(velocity, "aped.plasma_velocity[cm/s]");
 
     // Doppler shift
-    const double doppler_shift = velocity / C_cm_s;
+    const double doppler_shift = velocity / c_light_cgs;
 
     // metallicity
     double metallicity = 0.3;
@@ -119,10 +118,29 @@ int main(int argc, char *argv[])
     input.get_item(output_file, "aped.output_file_name");
 
     // no line broadening
-    std::string line_broadening = "none";
+    int int_line_broadening = 0;
+    input.get_item(int_line_broadening, "aped.line_broadening");
+    fm::aped::LineBroadening line_broadening=static_cast<fm::aped::LineBroadening>(int_line_broadening);
+
+    // default is delta function
+    fm::aped::LineShape line_shape = static_cast<fm::aped::LineShape>(0);
+    if (int_line_broadening)
+    {
+        int int_line_shape = 0;
+        input.get_item(int_line_shape, "aped.line_shape");
+        line_shape = static_cast<fm::aped::LineShape>(int_line_shape);
+    }
+
+    // number of elements
+    int num_elements;
+    input.get_item(num_elements, "aped.num_elements");
 
     // empty vector means all elements
-    std::vector<unsigned> elements;
+    std::vector<unsigned> elements(num_elements);
+    input.get_items(elements, "aped.elements");
+
+    double kernel_tolerance;
+    input.get_item(kernel_tolerance, "aped.kernel_tolerance");
 
     // spectral energy and emission
     std::vector<double> ph_energy(1, emin), spectrum;
@@ -145,9 +163,11 @@ int main(int argc, char *argv[])
                            metallicity,
                            temperature,
                            doppler_shift,
-                           line_broadening,
+                           cont_emission,
                            line_emission,
-                           cont_emission);
+                           line_shape,
+                           line_broadening,
+                           kernel_tolerance);
 
     std::cout << " size of emission spectrum is " << spectrum.size() << '\n';
 
