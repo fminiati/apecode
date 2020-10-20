@@ -517,8 +517,7 @@ namespace fm::aped
             const Element &atom = el_iterator->second;
 
             // if ionization state (rmJ) == 0 then add up all ions, else select ionization state according to input
-            const auto beg = a_rmJ == 0 ? atom.m_ions.begin() : atom.m_ions.find(a_rmJ);
-            const auto end = a_rmJ == 0 ? atom.m_ions.end() : (beg != atom.m_ions.end() ? std::next(beg) : beg);
+            const auto [beg, end] = (a_rmJ == 0 ? std::pair(atom.m_ions.cbegin(), atom.m_ions.cend()) : std::pair(atom.m_ions.find(a_rmJ), std::next(atom.m_ions.find(a_rmJ))));
             for (auto ion_iterator = beg; ion_iterator != end; ++ion_iterator)
             {
                 // set ion pointer
