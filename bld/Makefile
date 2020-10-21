@@ -12,14 +12,14 @@ CC     = /opt/local/bin/gcc-mp-10  #/opt/local/bin/clang-mp-9.0 #/opt/local/bin/
 CXX    = /opt/local/bin/g++-mp-10 #/opt/local/bin/clang++-mp-9.0 #/opt/local/bin/g++-mp-10
 #FC     = /opt/local/bin/gfortran-mp-10
 LD     = /opt/local/bin/gcc-mp-10
-OPTS   = -std=c++17 -O2 -g -Wall -DUSE_APED
+OPTS   = -std=c++17 -O2 -Wall -DUSE_APED # -DUSE_TIMER=5 -g
 
 OBJ = aped_spectrum.o Aped.o
-OBJTST = test_apecode_vs_heasoft.o Aped.o
+OBJTST = test_apecode_vs_heasoft.o Aped.o #XspecAped.o
 
 LIBS   = $(LIB) -lstdc++ -lm -lcfitsio
 HEADASINCL= -I$(HEADAS)include
-HEADASLIB= -L$(HEADAS)lib -lXSFunctions -lXSUtil
+HEADASLIB= -L$(HEADAS)lib -lXSFunctions -lXSUtil # -lCCfits_2.5 -lXS
 
 
 .cpp.o:
@@ -52,3 +52,6 @@ test_apecode_vs_heasoft.o: $(TSTDIR)test_apecode_vs_heasoft.cpp
 
 Aped.o: $(SRCDIR)Aped.cpp
 	$(CXX) $(OPTS) $(INCL) -c $(SRCDIR)Aped.cpp
+
+#XspecAped.o: $(SRCDIR)XspecAped.cxx
+#	$(CXX) $(OPTS) $(INCL) $(HEADASINCL) -c $(SRCDIR)XspecAped.cxx
