@@ -28,7 +28,7 @@ aped.aped_file_path= /Users/francesco.miniati/Work/clab/atomdb_v3.0.9
 aped.aped_version=3.0.9
 
 # verbosity
-aped.verbosity = 1;
+aped.verbosity = 0;
 
 # min and max ph energy
 aped.min_ph_energy[keV]=0.1
@@ -72,7 +72,7 @@ aped.line_broadening=1
 aped.line_shape=1
 
 # error tolerance for calculation of kernel weights
-aped.kernel_tolerance=1.e-8
+aped.kernel_tolerance=1.e-6del 
 
 # number of elements - aped contains up to 28
 aped.num_elements=28
