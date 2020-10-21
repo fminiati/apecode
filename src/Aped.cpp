@@ -36,7 +36,7 @@ namespace fm::aped
     Aped::Aped(const std::string a_aped_path, const std::string a_version, const int a_verbosity)
         : m_verbosity{a_verbosity}, m_energy_spacing{Spacing::undetermined}
     {
-        Timer_t<> t("Aped::define");
+        Timer_t<> t("define");
 
         const std::string apec_line_file = a_aped_path + "/apec_v" + a_version + "_line.fits";
         const std::string apec_coco_file = a_aped_path + "/apec_v" + a_version + "_coco.fits";
@@ -62,7 +62,7 @@ namespace fm::aped
         // number of hdus
         int num_hdus = -1, num_chdus = -1;
         {
-            Timer_t<> t("Aped::define:fits_read_in_params");
+            Timer_t<> t("fits_read_pars");
 
             fits_get_num_hdus(f_line_ptr, &num_hdus, &status);
             fits_get_num_hdus(f_coco_ptr, &num_chdus, &status);
@@ -131,7 +131,7 @@ namespace fm::aped
         }
 
         {
-            Timer_t<> t("Aped::define:fits_read_in_data");
+            Timer_t<> t("fits_read_data");
 
             // loop over fits hdus starting from second
             for (int hdu = 3; hdu <= num_hdus; ++hdu)
@@ -252,7 +252,7 @@ namespace fm::aped
         if (m_verbosity > 0)
         {
             std::cout << "  " << std::endl;
-            std::cout << " Aped Code was built successfully using fits files in " << a_aped_path << std::endl;
+            std::cout << " Aped Code was built successfully using fits files in " << a_aped_path << '\n';
             std::cout << "  " << std::endl;
         }
     }
