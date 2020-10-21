@@ -278,7 +278,7 @@ namespace fm::aped
          // convolve spectrum with this kernel
         static inline void convolve(std::vector<Real> &a_f, Kernel &&a_kernel)
         {
-            Timer_t<4> t("LineKernel::convolve_spectrum_kernel");
+            Timer_t<5> t("conv_spect_kern");
 
             std::vector<Real> convolution(a_f.size());
             std::memset(&convolution[0], 0, sizeof(Real) * convolution.size());
@@ -295,7 +295,7 @@ namespace fm::aped
                                     const size_t a_bin,
                                     const Kernel &a_kernel)
         {
-            Timer_t<4> t("LineKernel::convolve_line_kernel");
+            Timer_t<5> t("conv_line_kern");
 
             const size_t lo = std::max(a_bin - a_kernel.left_wing_size(), (size_t)0);
             const size_t hi = std::min(a_bin + a_kernel.right_wing_size(), a_c.size() - 1);
@@ -313,7 +313,7 @@ namespace fm::aped
                              const std::vector<Real> &a_fwhm,
                              const Real a_tolerance)
         {
-            Timer_t<4> t("Aped::GaussianKernel::convolve_spectrum_profile");
+            Timer_t<5> t("conv_spectrum");
 
             std::vector<Real> convolution(a_f.size());
             std::memset(&convolution[0], 0, sizeof(Real) * convolution.size());
@@ -325,15 +325,15 @@ namespace fm::aped
         }
 
         template <typename Shape>
-        static void convolve(std::vector<Real> &a_c,
-                             const Real a_I0,
-                             const Real a_centre,
-                             const Real a_fwhm,
-                             const size_t a_bin,
-                             const std::vector<Real> &a_x,
-                             const Real a_tolerance)
+        static inline void convolve(std::vector<Real> &a_c,
+                                    const Real a_I0,
+                                    const Real a_centre,
+                                    const Real a_fwhm,
+                                    const size_t a_bin,
+                                    const std::vector<Real> &a_x,
+                                    const Real a_tolerance)
         {
-            Timer_t<4> t("Aped::LineKernel::convolve_once_line_profile");
+            Timer_t<5> t("conv_line");
             assert(a_bin + 1 < a_x.size() && a_centre > a_x[a_bin] && a_centre < a_x[a_bin + 1]);
 
             const Real asymptote = Shape::area(std::numeric_limits<Real>::infinity());
@@ -342,7 +342,7 @@ namespace fm::aped
                 Real w = Shape::area(norm * (a_centre - a_x[a_bin]));
                 a_c[a_bin] += w * a_I0;
 
-                Real wm = zero;
+                Real wm{};
                 Real err = asymptote - w;
                 size_t iter = 1;
                 for (int i = a_bin - 1; err > a_tolerance && i >= 0 && iter < MAX_KERNEL_ITER; --i, ++iter)
@@ -362,7 +362,7 @@ namespace fm::aped
                 Real w = Shape::area(norm * (a_x[a_bin + 1] - a_centre));
                 a_c[a_bin] += w * a_I0;
 
-                Real wm = zero;
+                Real wm{};
                 Real err = asymptote - w;
                 size_t iter = 1;
                 for (size_t i = a_bin + 1; err > a_tolerance && i < a_c.size() && iter < MAX_KERNEL_ITER; ++i, ++iter)
@@ -385,6 +385,7 @@ namespace fm::aped
     auto build_kernel(const Real a_length, const Real a_kernel_tol)
     {
         static_assert(Spacing::is_uniform(broadening_spacing_v<Profile>), "build_kernel requires uniform Spacing type");
+        Timer_t<3> t("build_kernel");
 
         // compute integral of shape from centre to a mesh nodes along a wing. a_next_node is a function 
         // taking a node and returning the next in line
