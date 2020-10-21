@@ -24,6 +24,8 @@
 #ifndef APED_UTIL_H
 #define APED_UTIL_H
 
+#include <iostream>
+#include <iomanip>
 #include <vector>
 #include <string>
 #include <cstdlib>
