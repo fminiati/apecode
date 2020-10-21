@@ -45,10 +45,7 @@ namespace fm::aped
 {
     using Real = double;
 
-    // conversion from keV to Angstrom
-    constexpr Real keVToAngstrom = 12.39841974e0;
-    // conversion from keV to Kelvin
-    constexpr Real keVToKelvin = 1.1604505e7;
+    constexpr size_t MAX_KERNEL_ITER = 10;
 
     constexpr Real zero = 0.0e0;
     constexpr Real half = 0.5e0;
@@ -63,6 +60,10 @@ namespace fm::aped
     constexpr Real kB_cgs = 1.380648528e-16; // Xspec values: 1.3806511609069063e-16 
     // Speed of light in cm s^-1
     constexpr Real c_light_cgs = 2.99792458e10;
+    // conversion from keV to Angstrom
+    constexpr Real keVToAngstrom = 12.39841974e0;
+    // conversion from keV to Kelvin
+    constexpr Real keVToKelvin = 1.1604505e7;
 
     enum class LineShape : char
     {
@@ -98,6 +99,7 @@ namespace fm::aped
         template <typename T>
         static constexpr auto grid_spacing(const std::vector<T> &a_x)
         {
+            Timer_t<3> t("grid_spacing");
             constexpr T eps = std::numeric_limits<T>::epsilon();
 
             if (a_x.size() < 3)
@@ -178,13 +180,13 @@ namespace fm::aped
    
     struct Gaussian
     {
-        static inline Real area(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
+        static inline constexpr Real area(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
     };
 
     struct Lorentzian
     {
         static constexpr Real one_over_pi = one / pi;
-        static inline Real area(const Real a_x)  { return one_over_pi * std::atan(a_x); }
+        static inline constexpr Real area(const Real a_x)  { return one_over_pi * std::atan(a_x); }
     };
 
     struct PseudoVoigt
@@ -334,34 +336,47 @@ namespace fm::aped
             Timer_t<4> t("Aped::LineKernel::convolve_once_line_profile");
             assert(a_bin + 1 < a_x.size() && a_centre > a_x[a_bin] && a_centre < a_x[a_bin + 1]);
 
+            const Real asymptote = Shape::area(std::numeric_limits<Real>::infinity());
             const Real norm = two / a_fwhm;
             { // left wing
                 Real w = Shape::area(norm * (a_centre - a_x[a_bin]));
                 a_c[a_bin] += w * a_I0;
 
                 Real wm = zero;
-                Real err = half - w;
-                for (int i = a_bin - 1; err > a_tolerance && i >= 0; --i)
+                Real err = asymptote - w;
+                size_t iter = 1;
+                for (int i = a_bin - 1; err > a_tolerance && i >= 0 && iter < MAX_KERNEL_ITER; --i, ++iter)
                 {
                     wm += w;
                     w = Shape::area(norm * (a_centre - a_x[i])) - wm;
                     a_c[i] += w * a_I0;
                     err -= w;
                 }
+#ifndef NDEBUG
+                if (iter == MAX_KERNEL_ITER)
+                    std::clog << "Convolution::convolve: left-wing weight calculation did not converge after "
+                              << MAX_KERNEL_ITER << " iterations... the residual error is " << err << '\n';
+#endif
             }
             { // right wing
                 Real w = Shape::area(norm * (a_x[a_bin + 1] - a_centre));
                 a_c[a_bin] += w * a_I0;
 
                 Real wm = zero;
-                Real err = half - w;
-                for (size_t i = a_bin + 1; err > a_tolerance && i < a_c.size(); ++i)
+                Real err = asymptote - w;
+                size_t iter = 1;
+                for (size_t i = a_bin + 1; err > a_tolerance && i < a_c.size() && iter < MAX_KERNEL_ITER; ++i, ++iter)
                 {
                     wm += w;
                     w = Shape::area(norm * (a_x[i + 1] - a_centre)) - wm;
                     a_c[i] += w * a_I0;
                     err -= w;
                 }
+#ifndef NDEBUG
+                if (iter == MAX_KERNEL_ITER)
+                    std::clog << "Convolution::convolve: right-wing weight calculation did not converge after "
+                              << MAX_KERNEL_ITER << " iterations... the residual error is " << err << '\n';
+#endif
             }
         }
     };
@@ -369,19 +384,26 @@ namespace fm::aped
     template <typename Profile>
     auto build_kernel(const Real a_length, const Real a_kernel_tol)
     {
-        static_assert(Spacing::is_uniform(broadening_spacing_v<Profile>), "LineKernel requires const Spacing type");
+        static_assert(Spacing::is_uniform(broadening_spacing_v<Profile>), "build_kernel requires uniform Spacing type");
 
-        // compute integral of shape from centre to a mesh nodes along a wing, which is expected to asymptote to
-        // half. a_next_node is a function taking a node and returning the next in line
+        // compute integral of shape from centre to a mesh nodes along a wing. a_next_node is a function 
+        // taking a node and returning the next in line
         auto _weights = [a_kernel_tol](const Real a_centre, const Real a_node, const auto a_next_node) {
+            const Real asymptote = line_shape_t<Profile>::area(std::numeric_limits<Real>::infinity());
+
             const Real s = two * (a_node > a_centre ? one : -one);
             std::vector<Real> w(1, line_shape_t<Profile>::area(s * (a_node - a_centre)));
             Real node = a_node;
-            while (half - w.back() > a_kernel_tol)
+            while (asymptote - w.back() > a_kernel_tol && w.size() < MAX_KERNEL_ITER)
             {
                 node = a_next_node(node);
                 w.emplace_back(line_shape_t<Profile>::area(s * (node - a_centre)));
             }
+#ifndef NDEBUG
+            if (w.size() == MAX_KERNEL_ITER)
+                std::clog << "build_kernel: " << (s < zero ? "left" : "right") << " wing weight calculation did not converge after "
+                          << MAX_KERNEL_ITER << " iterations... the residual error is " << asymptote - w.back() << '\n';
+#endif
             return w;
         };
 
