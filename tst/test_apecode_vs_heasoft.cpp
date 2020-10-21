@@ -9,7 +9,7 @@
 #include "Aped.h" // this is from $HEADAS/include
 
 #include "../src/Aped.h" // header files with same name but from ../src
-#include "../src/XspecAped.h" // this is from $HEADAS/include
+//#include "../src/XspecAped.h" // this is from $HEADAS/include
 #include "FileParser.h"
 
 int main(int argc, char *argv[])
@@ -44,7 +44,6 @@ int main(int argc, char *argv[])
     std::string aped_version;
     input.get_item(aped_version, "aped.aped_version");
 
-    const std::string adb_path = "/Users/francesco.miniati/Work/clab/atomdb_v3.0.9";
     const std::string cocofile = aped_file_path + "/apec_v"+aped_version+"_coco.fits";
     const std::string linefile = aped_file_path + "/apec_v"+aped_version+"_line.fits";
 
@@ -147,8 +146,7 @@ int main(int argc, char *argv[])
 
     std::cout << "\nbuilding Xspec's aped... ";
     Aped std_aped;
-    const int status = std_aped.Read(cocofile, linefile);
-    if (status != 0)
+    if (const int status = std_aped.Read(cocofile, linefile); status != 0)
         return status;
     std::cout << " done! \n";
 
@@ -160,23 +158,38 @@ int main(int argc, char *argv[])
     //std_aped.SetBroadenPseudoContinuum(line_broadening != "none");
     std_aped.SetLogTempInterpolation(false);
 
+    // Xspec data
+    const Real temperature_kev = temperature / fm::aped::keVToKelvin;
+    const Real emission_measure = 1.e-14;
+    const RealArray ra_ph_energy(&ph_energy[0], ph_energy.size());
+
+    std::vector<fm::aped::ElementAbundance> el_abundance;
+    fm::aped::AbundanceUtil::relative_abundances(el_abundance,
+                                                 elements,
+                                                 metallicity,
+                                                 abundance_model);
+
+    // performance
+    std::chrono::duration<double, std::micro> tot_fm_dur{}, tot_fm_dur1{};
+    std::chrono::duration<double, std::micro> tot_xspec_dur{}, tot_xspec_dur1{};
     for (const auto A : elements)
     {
         std::cout << "\nTemp[K]= " << std::setw(10) << std::setprecision(4) << std::scientific << temperature
                   << ",  atomic number = " << A << std::endl;
-        // std::cout << " xspec abund = " << FunctionUtility::getAbundance(A)
-        //   << " xspec A&G abund = " << FunctionUtility::getAbundance("angr", A) << '\n';
 
-        std::vector<unsigned> elements(1, A);
+        std::vector<unsigned> one_element(1, A);
         std::vector<double> fm_aped_spectrum;
         if (verbose)
             std::cout << " computing emission_spectrum with fm::aped... ";
         std::chrono::duration<double, std::micro> fm_aped_dur;
         {
+#ifdef USE_TIMER
+            Timer_t<> t("Aped");
+#endif
             const auto t_i{Clock::now()};
             fm_aped.emission_spectrum(fm_aped_spectrum,
                                       ph_energy,
-                                      elements,
+                                      one_element,
                                       abundance_model,
                                       metallicity,
                                       temperature,
@@ -188,24 +201,16 @@ int main(int argc, char *argv[])
                                       kernel_tolerance);
             const auto t_e{Clock::now()};
             fm_aped_dur = t_e - t_i;
+            tot_fm_dur += fm_aped_dur;
+            if (A != elements[0]) tot_fm_dur1 += fm_aped_dur;
         }
         if (verbose)
             std::cout << " done! \n";
 
-        std::vector<fm::aped::ElementAbundance> el_abundance;
-        fm::aped::AbundanceUtil::relative_abundances(el_abundance,
-                                                     std::vector<unsigned>(1, A),
-                                                     metallicity,
-                                                     abundance_model);
-
-        const Real temperature_kev = temperature / fm::aped::keVToKelvin;
-        //const Real temperature_broadening = 0.000861739; //0.e0; //temperature / fm::aped::keVtoKelvin;
-        const Real emission_measure = 1.e-14;
         // IntegerArray is  a std::vector<int>
-        const IntegerArray ia_element(1, el_abundance[0].m_atomic_number);
+        const IntegerArray ia_element(1, el_abundance[A-1].m_atomic_number);
         // RealArray is a std::valarray<Real>
-        const RealArray ra_el_abundance(el_abundance[0].m_abundance, 1);
-        const RealArray ra_ph_energy(&ph_energy[0], ph_energy.size());
+        const RealArray ra_el_abundance(el_abundance[A-1].m_abundance, 1);
         RealArray ra_xspec_spectrum(0.0, ph_energy.size() - 1), ra_spectrum_err(0.0, ph_energy.size() - 1);
 
         if (verbose)
@@ -219,13 +224,14 @@ int main(int argc, char *argv[])
                                   ra_xspec_spectrum, ra_spectrum_err);
             const auto t_e{Clock::now()};
             xspec_dur = t_e - t_i;
+            tot_xspec_dur += xspec_dur;
+            if (A != elements[0]) tot_xspec_dur1 += xspec_dur;
         }
         // const int status = xspec::calcCEISpectrum(ra_ph_energy, ia_element, ra_el_abundance, doppler_shift,
-        // const int status = calcCEISpectrum(ra_ph_energy, ia_element, ra_el_abundance, doppler_shift,
         //                                    temperature_kev, emission_measure, int_line_broadening,
         //                                    doppler_shift, !line_emission, ra_xspec_spectrum, ra_spectrum_err);
-        if (status)
-            std::cerr << " Aped status = " << status << '\n';
+        // if (status)
+        //     std::cerr << " Aped status = " << status << '\n';
         if (verbose)
             std::cout << " done! \n";
 
@@ -240,7 +246,8 @@ int main(int argc, char *argv[])
             aped_vs_xspec_max_rel_diff = std::max(aped_vs_xspec_max_rel_diff, rel_diff(fm_aped_spectrum[i], ra_xspec_spectrum[i]));
         }
         std::cout << " Timing: fm_aped: " << fm_aped_dur.count() << "us, xspec_aped: " << xspec_dur.count() << " us\n";
-        std::cout << " Max Relative Diff fm::aped vs xspec's aped= " << std::setw(10) << std::setprecision(4) << std::scientific << aped_vs_xspec_max_rel_diff
+        std::cout << " Max Relative Diff fm::aped vs xspec's aped= "
+                  << std::setw(10) << std::setprecision(4) << std::scientific << aped_vs_xspec_max_rel_diff
                   << '\n';
 
         if (verbose)
@@ -250,15 +257,61 @@ int main(int argc, char *argv[])
                 std::cout << " E[keV]=" << std::setw(10) << std::setprecision(4) << std::scientific << ph_energy[i]
                           << " -->   aped= " << std::setw(10) << std::setprecision(4) << std::scientific << fm_aped_spectrum[i]
                           << " -->   xspec= " << std::setw(10) << std::setprecision(4) << std::scientific << ra_xspec_spectrum[i]
-                          //      << "  --->   eps[ph cm^3 s^-1]= " << std::setw(10) << std::setprecision(4) << std::scientific << spc_va2[i]
-                          << " --->  Daped-xspec(\%)= " << std::setw(10) << std::setprecision(4) << std::scientific << rel_diff(fm_aped_spectrum[i], ra_xspec_spectrum[i])
-                          //   << "  --->   Deps/eps= " << std::setw(10) << std::setprecision(4) << std::scientific << (spc_va[i]-spc_va2[i])/spc_va[i]
+                          << " --->  Daped-xspec(\%)= " << std::setw(10) << std::setprecision(4) << std::scientific 
+                          << rel_diff(fm_aped_spectrum[i], ra_xspec_spectrum[i])
                           << std::endl;
             }
         }
     }
-    // read parameters from input fits files:
-    // read temperature data
+    std::cout << " Final timing: \n";
+    std::cout << "     total.......... : fm_aped : " << tot_fm_dur.count() << "us, xspec_aped : " << tot_xspec_dur.count() << " us\n";
+    std::cout << "     total w/o first : fm_aped : " << tot_fm_dur1.count() << "us, xspec_aped : " << tot_xspec_dur1.count() << " us\n";
+    {
+        std::chrono::duration<double, std::micro> fm_full_dur;
+        {
+            std::vector<double> fm_aped_spectrum;
+            const auto t_i{Clock::now()};
+            fm_aped.emission_spectrum(fm_aped_spectrum,
+                                      ph_energy,
+                                      elements,
+                                      abundance_model,
+                                      metallicity,
+                                      temperature,
+                                      doppler_shift,
+                                      cont_emission,
+                                      line_emission,
+                                      line_shape,
+                                      line_broadening,
+                                      kernel_tolerance);
+            const auto t_e{Clock::now()};
+            fm_full_dur = t_e - t_i;
+        }
+
+        std::chrono::duration<double, std::micro> full_xspec_dur;
+        {
+            // RealArray is a std::valarray<Real>
+            RealArray ra_el_abundance(num_elements);
+            IntegerArray ia_element(num_elements);
+            for (const auto A : el_abundance)
+            {
+                ra_el_abundance[A.m_atomic_number-1] = A.m_abundance;
+                ia_element[A.m_atomic_number-1] = A.m_atomic_number;
+            }
+            RealArray ra_xspec_spectrum(0.0, ph_energy.size() - 1), ra_spectrum_err(0.0, ph_energy.size() - 1);
+            const auto t_i{Clock::now()};
+            std_aped.SumEqSpectra(ra_ph_energy, ia_element, ra_el_abundance,
+                                  doppler_shift, temperature_kev, emission_measure,
+                                  ra_xspec_spectrum, ra_spectrum_err);
+            const auto t_e{Clock::now()};
+            full_xspec_dur = t_e - t_i;
+            std::cout << " Full calculation timing: \n";
+            std::cout << "     total...... : fm_aped : " << fm_full_dur.count() << "us, xspec_aped : " << full_xspec_dur.count() << " us\n ";
+        }
+    }
+
+#ifdef USE_TIMER
+    Timer_t<>::print_record(std::cout);
+#endif
 
     return 0;
 }
