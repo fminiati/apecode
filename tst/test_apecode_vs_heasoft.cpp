@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
         std::chrono::duration<double, std::micro> fm_aped_dur;
         {
 #ifdef USE_TIMER
-            Timer_t<> t("Aped");
+            Timer_t<> t("Aped.Ind");
 #endif
             const auto t_i{Clock::now()};
             fm_aped.emission_spectrum(fm_aped_spectrum,
@@ -267,26 +267,6 @@ int main(int argc, char *argv[])
     std::cout << "     total.......... : fm_aped : " << tot_fm_dur.count() << "us, xspec_aped : " << tot_xspec_dur.count() << " us\n";
     std::cout << "     total w/o first : fm_aped : " << tot_fm_dur1.count() << "us, xspec_aped : " << tot_xspec_dur1.count() << " us\n";
     {
-        std::chrono::duration<double, std::micro> fm_full_dur;
-        {
-            std::vector<double> fm_aped_spectrum;
-            const auto t_i{Clock::now()};
-            fm_aped.emission_spectrum(fm_aped_spectrum,
-                                      ph_energy,
-                                      elements,
-                                      abundance_model,
-                                      metallicity,
-                                      temperature,
-                                      doppler_shift,
-                                      cont_emission,
-                                      line_emission,
-                                      line_shape,
-                                      line_broadening,
-                                      kernel_tolerance);
-            const auto t_e{Clock::now()};
-            fm_full_dur = t_e - t_i;
-        }
-
         std::chrono::duration<double, std::micro> full_xspec_dur;
         {
             // RealArray is a std::valarray<Real>
@@ -304,9 +284,31 @@ int main(int argc, char *argv[])
                                   ra_xspec_spectrum, ra_spectrum_err);
             const auto t_e{Clock::now()};
             full_xspec_dur = t_e - t_i;
-            std::cout << " Full calculation timing: \n";
-            std::cout << "     total...... : fm_aped : " << fm_full_dur.count() << "us, xspec_aped : " << full_xspec_dur.count() << " us\n ";
         }
+        std::chrono::duration<double, std::micro> fm_full_dur;
+        {
+#ifdef USE_TIMER
+            Timer_t<> t("Aped.All");
+#endif
+            std::vector<double> fm_aped_spectrum;
+            const auto t_i{Clock::now()};
+            fm_aped.emission_spectrum(fm_aped_spectrum,
+                                      ph_energy,
+                                      elements,
+                                      abundance_model,
+                                      metallicity,
+                                      temperature,
+                                      doppler_shift,
+                                      cont_emission,
+                                      line_emission,
+                                      line_shape,
+                                      line_broadening,
+                                      kernel_tolerance);
+            const auto t_e{Clock::now()};
+            fm_full_dur = t_e - t_i;
+        }
+        std::cout << " Full calculation timing: \n";
+        std::cout << "     total...... : fm_aped : " << fm_full_dur.count() << "us, xspec_aped : " << full_xspec_dur.count() << " us\n ";
     }
 
 #ifdef USE_TIMER
