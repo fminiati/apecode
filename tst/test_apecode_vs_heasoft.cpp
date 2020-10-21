@@ -34,6 +34,19 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+usa    auto rel_diff = [](const auto a, const auto b) {
+        const auto c = 0.5 * (a + b);
+        return (c > 0 ? std::abs(a - b) / b : fm::aped::zero);
+    };
+    auto max_rel_diff = [rel_diff](const auto &a, const auto &b) {
+        double max_diff = 0;
+        for (size_t i = 0; i < a.size(); ++i)
+        {
+            max_diff = std::max(max_diff, rel_diff(a[i], b[i]));
+        }
+        return max_diff;
+    };
+
     // read input file
     fm::FileParser input(input_file);
 
@@ -235,19 +248,10 @@ int main(int argc, char *argv[])
         if (verbose)
             std::cout << " done! \n";
 
-        auto rel_diff = [](const auto a, const auto b) {
-            const auto c = 0.5 * (a + b);
-            return (c > 0 ? std::abs(a - b) / b : fm::aped::zero);
-        };
-
-        double aped_vs_xspec_max_rel_diff = 0.0;
-        for (size_t i = 0; i < fm_aped_spectrum.size(); ++i)
-        {
-            aped_vs_xspec_max_rel_diff = std::max(aped_vs_xspec_max_rel_diff, rel_diff(fm_aped_spectrum[i], ra_xspec_spectrum[i]));
-        }
-        std::cout << " Timing: fm_aped: " << fm_aped_dur.count() << "us, xspec_aped: " << xspec_dur.count() << " us\n";
+        std::cout
+            << " Timing: fm_aped: " << fm_aped_dur.count() << "us, xspec_aped: " << xspec_dur.count() << " us\n";
         std::cout << " Max Relative Diff fm::aped vs xspec's aped= "
-                  << std::setw(10) << std::setprecision(4) << std::scientific << aped_vs_xspec_max_rel_diff
+                  << std::setw(10) << std::setprecision(4) << std::scientific << max_rel_diff(fm_aped_spectrum,ra_xspec_spectrum)
                   << '\n';
 
         if (verbose)
@@ -263,10 +267,12 @@ int main(int argc, char *argv[])
             }
         }
     }
-    std::cout << " Final timing: \n";
-    std::cout << "     total.......... : fm_aped : " << tot_fm_dur.count() << "us, xspec_aped : " << tot_xspec_dur.count() << " us\n";
-    std::cout << "     total w/o first : fm_aped : " << tot_fm_dur1.count() << "us, xspec_aped : " << tot_xspec_dur1.count() << " us\n";
+    std::cout << "\nFinal timing: \n";
+    std::cout << "    total.......... : fm_aped: " << tot_fm_dur.count() << "us, xspec_aped: " << tot_xspec_dur.count() << " us\n";
+    std::cout << "    total w/o first : fm_aped: " << tot_fm_dur1.count() << "us, xspec_aped: " << tot_xspec_dur1.count() << " us\n";
     {
+        std::vector<double> fm_aped_spectrum;
+        RealArray ra_xspec_spectrum(0.0, ph_energy.size() - 1), ra_spectrum_err(0.0, ph_energy.size() - 1);
         std::chrono::duration<double, std::micro> full_xspec_dur;
         {
             // RealArray is a std::valarray<Real>
@@ -277,7 +283,6 @@ int main(int argc, char *argv[])
                 ra_el_abundance[A.m_atomic_number-1] = A.m_abundance;
                 ia_element[A.m_atomic_number-1] = A.m_atomic_number;
             }
-            RealArray ra_xspec_spectrum(0.0, ph_energy.size() - 1), ra_spectrum_err(0.0, ph_energy.size() - 1);
             const auto t_i{Clock::now()};
             std_aped.SumEqSpectra(ra_ph_energy, ia_element, ra_el_abundance,
                                   doppler_shift, temperature_kev, emission_measure,
@@ -290,7 +295,6 @@ int main(int argc, char *argv[])
 #ifdef USE_TIMER
             Timer_t<> t("Aped.All");
 #endif
-            std::vector<double> fm_aped_spectrum;
             const auto t_i{Clock::now()};
             fm_aped.emission_spectrum(fm_aped_spectrum,
                                       ph_energy,
@@ -307,8 +311,11 @@ int main(int argc, char *argv[])
             const auto t_e{Clock::now()};
             fm_full_dur = t_e - t_i;
         }
-        std::cout << " Full calculation timing: \n";
-        std::cout << "     total...... : fm_aped : " << fm_full_dur.count() << "us, xspec_aped : " << full_xspec_dur.count() << " us\n ";
+        std::cout << "\nFull calculation using " << elements.size() << "elements\n";
+        std::cout << "    Timing..... : fm_aped: " << fm_full_dur.count() << "us, xspec_aped : " << full_xspec_dur.count() << " us\n";
+        std::cout << "    Max Relative Diff fm::aped vs xspec's aped= "
+                  << std::setw(10) << std::setprecision(4) << std::scientific << max_rel_diff(fm_aped_spectrum,ra_xspec_spectrum)
+                  << '\n';
     }
 
 #ifdef USE_TIMER
