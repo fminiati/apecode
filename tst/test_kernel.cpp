@@ -20,9 +20,9 @@ void go_through_k(const Real a_len, const Real a_tol)
     fm::aped::Kernel k{build_kernel<Profile>(a_len, a_tol)};
 
     std::cout << "    left wing size =" << k.left_wing_size() << ", right wing size=" << k.right_wing_size() << '\n';
-    // std::cout << "    weights: \n";
-    // for (int w = -k.left_wing_size(); w <= k.right_wing_size(); ++w)
-    //     std::cout << "        w[" << w << "]=" << k.weight(w) <<'\n';
+    std::cout << "    weights: \n";
+    for (int w = -k.left_wing_size(); w <= k.right_wing_size(); ++w)
+        std::cout << "        w[" << w << "]=" << k.weight(w) << '\n';
 }
 
 int main(int argc, char* argv[])
