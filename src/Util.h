@@ -45,8 +45,6 @@ namespace fm::aped
 {
     using Real = double;
 
-    constexpr size_t MAX_KERNEL_ITER = 10;
-
     constexpr Real zero = 0.0e0;
     constexpr Real half = 0.5e0;
     constexpr Real one = 1.0e0;
@@ -337,6 +335,8 @@ namespace fm::aped
             assert(a_bin + 1 < a_x.size() && a_centre > a_x[a_bin] && a_centre < a_x[a_bin + 1]);
 
             const Real asymptote = Shape::area(std::numeric_limits<Real>::infinity());
+            const Real delta_tol = 0.1 * a_tolerance;
+
             const Real norm = two / a_fwhm;
             { // left wing
                 Real w = Shape::area(norm * (a_centre - a_x[a_bin]));
@@ -344,8 +344,7 @@ namespace fm::aped
 
                 Real wm{};
                 Real err = asymptote - w;
-                size_t iter = 1;
-                for (int i = a_bin - 1; err > a_tolerance && i >= 0 && iter < MAX_KERNEL_ITER; --i, ++iter)
+                for (int i = a_bin - 1; err > a_tolerance && i >= 0 && w >= delta_tol; --i)
                 {
                     wm += w;
                     w = Shape::area(norm * (a_centre - a_x[i])) - wm;
@@ -353,9 +352,9 @@ namespace fm::aped
                     err -= w;
                 }
 #ifndef NDEBUG
-                if (iter == MAX_KERNEL_ITER)
-                    std::clog << "Convolution::convolve: left-wing weight calculation did not converge after "
-                              << MAX_KERNEL_ITER << " iterations... the residual error is " << err << '\n';
+                if (err >  a_tolerance)
+                    std::clog << "Convolution::convolve: left-wing weight calculation did not converge... "
+                              << "the residual error is " << err << '\n';
 #endif
             }
             { // right wing
@@ -364,8 +363,7 @@ namespace fm::aped
 
                 Real wm{};
                 Real err = asymptote - w;
-                size_t iter = 1;
-                for (size_t i = a_bin + 1; err > a_tolerance && i < a_c.size() && iter < MAX_KERNEL_ITER; ++i, ++iter)
+                for (size_t i = a_bin + 1; err > a_tolerance && i < a_c.size() && w >= delta_tol; ++i)
                 {
                     wm += w;
                     w = Shape::area(norm * (a_x[i + 1] - a_centre)) - wm;
@@ -373,9 +371,9 @@ namespace fm::aped
                     err -= w;
                 }
 #ifndef NDEBUG
-                if (iter == MAX_KERNEL_ITER)
-                    std::clog << "Convolution::convolve: right-wing weight calculation did not converge after "
-                              << MAX_KERNEL_ITER << " iterations... the residual error is " << err << '\n';
+                if (err >  a_tolerance)
+                    std::clog << "Convolution::convolve: right-wing weight calculation did not converge... "
+                              << "the residual error is " << err << '\n';
 #endif
             }
         }
@@ -389,21 +387,25 @@ namespace fm::aped
 
         // compute integral of shape from centre to a mesh nodes along a wing. a_next_node is a function 
         // taking a node and returning the next in line
-        auto _weights = [a_kernel_tol](const Real a_centre, const Real a_node, const auto a_next_node) {
+        auto kernel_weights = [a_kernel_tol](const Real a_centre, const Real a_node, const auto a_next_node) {
             const Real asymptote = line_shape_t<Profile>::area(std::numeric_limits<Real>::infinity());
+            const Real delta_tol = 0.1 * a_kernel_tol;
 
             const Real s = two * (a_node > a_centre ? one : -one);
             std::vector<Real> w(1, line_shape_t<Profile>::area(s * (a_node - a_centre)));
             Real node = a_node;
-            while (asymptote - w.back() > a_kernel_tol && w.size() < MAX_KERNEL_ITER)
+            Real dw = one;
+            while (asymptote - w.back() > a_kernel_tol && dw >= delta_tol)
             {
+                dw = -w.back();
                 node = a_next_node(node);
                 w.emplace_back(line_shape_t<Profile>::area(s * (node - a_centre)));
+                dw += w.back();
             }
 #ifndef NDEBUG
-            if (w.size() == MAX_KERNEL_ITER)
-                std::clog << "build_kernel: " << (s < zero ? "left" : "right") << " wing weight calculation did not converge after "
-                          << MAX_KERNEL_ITER << " iterations... the residual error is " << asymptote - w.back() << '\n';
+            if (const Real err = asymptote - w.back(); err > a_kernel_tol)
+                std::clog << "build_kernel: " << (s < zero ? "left" : "right")
+                          << " wing weight calculation did not converge... the residual error is " << err << '\n';
 #endif
             return w;
         };
@@ -413,13 +415,13 @@ namespace fm::aped
             const Real lo = one, mid = one + half * a_length, hi = one + a_length;
             if constexpr (broadening_spacing_v<Profile> == Spacing::log_uniform)
             {
-                wm = _weights(mid, lo, [f = one / a_length](const Real x) { return f * x; });
-                wp = _weights(mid, hi, [f = a_length](const Real x) { return f * x; });
+                wm = kernel_weights(mid, lo, [f = one / a_length](const Real x) { return f * x; });
+                wp = kernel_weights(mid, hi, [f = a_length](const Real x) { return f * x; });
             }
             else if constexpr (broadening_spacing_v<Profile> == Spacing::linear_uniform)
             {
-                wm = _weights(mid, lo, [dx = a_length](const Real x) { return x - dx; });
-                wp = _weights(mid, hi, [dx = a_length](const Real x) { return x + dx; });
+                wm = kernel_weights(mid, lo, [dx = a_length](const Real x) { return x - dx; });
+                wp = kernel_weights(mid, hi, [dx = a_length](const Real x) { return x + dx; });
             }
         }
         // now go backward, and get the proper weights by successive subtraction
@@ -436,7 +438,8 @@ namespace fm::aped
         Real sum = zero;
         for (auto x : w)
             sum += x;
-        assert(abs(one - sum) < two * a_kernel_tol);
+        if (const Real err = abs(one - sum); err > two * a_kernel_tol)
+            std::clog << "build_kernel: kernel not normalized, error is :" << std::setprecision(10) << err << '\n';
 #endif
 
         return Kernel(wm.size() - 1, wp.size() - 1, w);
