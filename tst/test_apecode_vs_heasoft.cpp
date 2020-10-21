@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
             // RealArray is a std::valarray<Real>
             RealArray ra_el_abundance(num_elements);
             IntegerArray ia_element(num_elements);
-            for (const auto A : el_abundance)
+            for (const auto& A : el_abundance)
             {
                 ra_el_abundance[A.m_atomic_number-1] = A.m_abundance;
                 ia_element[A.m_atomic_number-1] = A.m_atomic_number;
