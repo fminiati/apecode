@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-usa    auto rel_diff = [](const auto a, const auto b) {
+    auto rel_diff = [](const auto a, const auto b) {
         const auto c = 0.5 * (a + b);
         return (c > 0 ? std::abs(a - b) / b : fm::aped::zero);
     };
