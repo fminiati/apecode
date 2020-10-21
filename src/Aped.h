@@ -34,7 +34,7 @@
 #include <cassert>
 #include <algorithm>
 
-#include "Util.H"
+#include "Util.h"
 
 namespace fm::aped
 {
