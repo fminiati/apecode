@@ -433,7 +433,7 @@ namespace fm::aped
 
                     // add ion emission to spectrum taking into account io abundance and ionization fraction
                     auto add_emission_to_spectrum = [x = f * A.m_abundance](std::vector<Real> &j, const std::vector<Real> &i) {
-                        Timer_t<4> t("add_em_to_spec");
+                        Timer_t<4> t("add_spectra");
                         for (size_t k = 0; k < j.size(); ++k)
                             j[k] += x * i[k];
                     };
@@ -501,7 +501,6 @@ namespace fm::aped
         // resize spectrum vector
         a_spectrum.resize(a_energy.size() - 1);
         std::memset(&a_spectrum[0], 0, sizeof(Real) * a_spectrum.size());
-
         // count num lines
         size_t num_lines = 0;
 
@@ -537,7 +536,7 @@ namespace fm::aped
                         Timer_t<4> t("convolution");
                         const Real line_fwhm = Profile::fwhm(a_temperature,
                                                              AMU_cgs * a_atom.m_atomic_mass, line_energy);
-                        Convolution::convolve<Profile>(a_spectrum, (Real)ion.m_line_emissivity[i_line],
+                        Convolution::convolve<Profile>(a_spectrum, ion.m_line_emissivity[i_line],
                                                        line_energy, line_fwhm, energy_bin,
                                                        a_energy, a_kernel_tolerance);
                     }
@@ -565,9 +564,9 @@ namespace fm::aped
     {
         Timer_t<3> t("ion_cont_em");
 
-        auto add_cont_emission_to_spectrum = [&j = a_continuum, &e = a_energy](const std::vector<Real> &js,
-                                                                               const std::vector<Real> &es) {
-            Timer_t<4> t("add_cont_em");
+        auto interp_cont_emission = [&j = a_continuum, &e = a_energy](const std::vector<Real> &js,
+                                                                      const std::vector<Real> &es) {
+            Timer_t<4> t("interp_cont");
 
             if (es.back() < e.front() && es.front() > e.back())
                 return;
@@ -588,11 +587,6 @@ namespace fm::aped
                 {
                     while (es[k] < e[i])
                         ++k;
-
-                    // // reset foot emissivity if need be
-                    // if (i == 0 && k > 0)
-                    //     jf = js[k - 1] + (js[k] - js[k - 1]) / (es[k] - es[k - 1]) * (ef - es[k - 1]);
-
                     // loop through source contributions within this e-bin
                     while (es[k] <= e[i + 1] && k < js.size())
                     {
@@ -632,7 +626,7 @@ namespace fm::aped
                     for (auto &e : pseudo_cont_energy)
                         e *= (one + a_doppler_shift);
                 }
-                add_cont_emission_to_spectrum(ion.m_pseudo_cont, pseudo_cont_energy);
+                interp_cont_emission(ion.m_pseudo_cont, pseudo_cont_energy);
 
                 if constexpr (false && !std::is_same_v<line_shape_t<Profile>, Delta>)
                 {
@@ -658,7 +652,7 @@ namespace fm::aped
 
             if (a_cont_emission)
             {
-                Timer_t<4> t("cont_emission");
+                Timer_t<4> t("true_cont_em");
 
                 std::vector<Real> cont_energy(ion.m_cont_energy);
                 if (a_doppler_shift != 0.e0)
@@ -666,7 +660,7 @@ namespace fm::aped
                     for (auto &e : cont_energy)
                         e *= (one + a_doppler_shift);
                 }
-                add_cont_emission_to_spectrum(ion.m_continuum, cont_energy);
+                interp_cont_emission(ion.m_continuum, cont_energy);
             }
         }
         else

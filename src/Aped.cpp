@@ -217,7 +217,6 @@ namespace fm::aped
                     // make sure record contains relevant element and ion
                     temp_record.check_element(element[l]);
                     temp_record.m_elements[element[l]].check_ion(ion[l]);
-                    //if (element[l]==3) std::cout << " A(3) " << temp_record.elements[element[l]].m_atomic_number << std::endl;
 
                     temp_record.m_elements[element[l]].m_ions[ion[l]].m_line_energy.emplace_back(keVToAngstrom / lambda[l]);
                     temp_record.m_elements[element[l]].m_ions[ion[l]].m_line_emissivity.emplace_back(epsilon[l]);
@@ -244,7 +243,7 @@ namespace fm::aped
                 assert(temp_record.m_elements.size() == NUM_APED_ATOMS);
 
                 // finally add data to table
-                m_aped_data.emplace_back(temp_record);
+                m_aped_data.emplace_back(std::move(temp_record));
 
             } // loop over hdus
         }     // timer
