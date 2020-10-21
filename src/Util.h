@@ -97,7 +97,7 @@ namespace fm::aped
         }
 
         template <typename T>
-        static constexpr auto grid_spacing(const std::vector<T> &a_x)
+        static auto grid_spacing(const std::vector<T> &a_x)
         {
             Timer_t<3> t("grid_spacing");
             constexpr T eps = std::numeric_limits<T>::epsilon();
@@ -114,12 +114,12 @@ namespace fm::aped
 
             // check linear
             const T dx = a_x[1] - a_x[0];
-            if (all_adjacent_of(a_x, [dx, eps](const T a, const T b) { return std::fabs(b - a - dx) < eps * dx; }))
+            if (all_adjacent_of(a_x, [dx](const T a, const T b) { return std::fabs(b - a - dx) < eps * dx; }))
                 return Spacing::linear_uniform;
 
             // check logarithmic
             const T dlx = a_x[1] / a_x[0];
-            if (all_adjacent_of(a_x, [dlx, eps](const T a, const T b) { return std::fabs(a / b * dlx - one) < eps * dlx; }))
+            if (all_adjacent_of(a_x, [dlx](const T a, const T b) { return std::fabs(a / b * dlx - one) < eps * dlx; }))
                 return Spacing::log_uniform;
 
             return Spacing::irregular;
@@ -180,13 +180,13 @@ namespace fm::aped
    
     struct Gaussian
     {
-        static inline constexpr Real area(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
+        static inline Real area(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
     };
 
     struct Lorentzian
     {
         static constexpr Real one_over_pi = one / pi;
-        static inline constexpr Real area(const Real a_x)  { return one_over_pi * std::atan(a_x); }
+        static inline Real area(const Real a_x)  { return one_over_pi * std::atan(a_x); }
     };
 
     struct PseudoVoigt
