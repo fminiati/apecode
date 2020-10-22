@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <chrono>
+#include <cmath>
 #include <xsFortran.h>
 #include <xsTypes.h>
 #include <FunctionUtility.h>
@@ -34,9 +35,9 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    auto rel_diff = [](const auto a, const auto b) {
+    auto rel_diff = [](const double a, const double b) {
         const auto c = 0.5 * (a + b);
-        return (c > 0 ? std::abs(a - b) / b : fm::aped::zero);
+        return (c > 0 ? std::abs(a - b) / b : 0);
     };
     auto max_rel_diff = [rel_diff](const auto &a, const auto &b) {
         double max_diff = 0;
