@@ -47,6 +47,8 @@ namespace fm::aped
 {
     using Real = double;
 
+    constexpr Real MIN_W_INCR_TO_KERNEL_TOL = 0.1;
+
     constexpr Real zero = 0.0e0;
     constexpr Real half = 0.5e0;
     constexpr Real one = 1.0e0;
@@ -336,12 +338,12 @@ namespace fm::aped
             Timer_t<5> t("conv_line");
             assert(a_bin + 1 < a_x.size() && a_centre > a_x[a_bin] && a_centre < a_x[a_bin + 1]);
 
-            const Real asymptote = Shape::area(std::numeric_limits<Real>::infinity());
-            const Real delta_tol = 0.1 * a_tolerance;
+            const Real delta_tol = MIN_W_INCR_TO_KERNEL_TOL * a_tolerance;
 
             const Real norm = two / a_fwhm;
             { // left wing
-                Real w = Shape::area(norm * (a_centre - a_x[a_bin]));
+                const Real asymptote = -Shape::area(-std::numeric_limits<Real>::infinity());
+                Real w = -Shape::area(norm * (a_x[a_bin] - a_centre));
                 a_c[a_bin] += w * a_I0;
 
                 Real wm{};
@@ -349,7 +351,7 @@ namespace fm::aped
                 for (int i = a_bin - 1; err > a_tolerance && i >= 0 && w >= delta_tol; --i)
                 {
                     wm += w;
-                    w = Shape::area(norm * (a_centre - a_x[i])) - wm;
+                    w = -Shape::area(norm * (a_x[i] - a_centre)) - wm;
                     a_c[i] += w * a_I0;
                     err -= w;
                 }
@@ -360,6 +362,7 @@ namespace fm::aped
 #endif
             }
             { // right wing
+                const Real asymptote = Shape::area(std::numeric_limits<Real>::infinity());
                 Real w = Shape::area(norm * (a_x[a_bin + 1] - a_centre));
                 a_c[a_bin] += w * a_I0;
 
@@ -390,18 +393,18 @@ namespace fm::aped
         // compute integral of shape from centre to a mesh nodes along a wing. a_next_node is a function 
         // taking a node and returning the next in line
         auto kernel_weights = [a_kernel_tol](const Real a_centre, const Real a_node, const auto a_next_node) {
-            const Real asymptote = line_shape_t<Profile>::area(std::numeric_limits<Real>::infinity());
-            const Real delta_tol = 0.1 * a_kernel_tol;
-
             const Real s = two * (a_node > a_centre ? one : -one);
-            std::vector<Real> w(1, line_shape_t<Profile>::area(s * (a_node - a_centre)));
+            const Real asymptote = s * line_shape_t<Profile>::area(s * std::numeric_limits<Real>::infinity());
+            const Real delta_tol = MIN_W_INCR_TO_KERNEL_TOL * a_kernel_tol;
+
+            std::vector<Real> w(1, s * line_shape_t<Profile>::area(a_node - a_centre));
             Real node = a_node;
             Real dw = one;
             while (asymptote - w.back() > a_kernel_tol && dw >= delta_tol)
             {
                 dw = -w.back();
                 node = a_next_node(node);
-                w.emplace_back(line_shape_t<Profile>::area(s * (node - a_centre)));
+                w.emplace_back(s * line_shape_t<Profile>::area(node - a_centre));
                 dw += w.back();
             }
 #ifndef NDEBUG
