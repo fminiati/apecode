@@ -99,8 +99,9 @@ int main(int argc, char *argv[])
     input.get_item(metallicity, "aped.plasma_metallicity");
 
     // abundance model
-    std::string abundance_model = "Lodders";
-    input.get_item(abundance_model, "aped.plasma_abundance_model");
+    int int_abundance_model = 0;
+    input.get_item(int_abundance_model, "aped.plasma_abundance_model");
+    fm::aped::AbundanceModel abundance_model=static_cast<fm::aped::AbundanceModel>(int_abundance_model);
 
     // line emission
     bool line_emission = false;

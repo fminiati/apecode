@@ -50,7 +50,9 @@ aped.plasma_velocity[cm/s]=0.0
 aped.plasma_metallicity=1 #0.3
 
 # plasma abundance model
-aped.plasma_abundance_model= AndersGrevesse  #Lodders
+# 0 = AndersGrevesse
+# 1 = Lodders
+aped.plasma_abundance_model= 0
 
 # use line emission (0=no,1=yes)
 aped.use_line_emission=1

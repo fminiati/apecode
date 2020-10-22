@@ -64,6 +64,12 @@ namespace fm::aped
     constexpr unsigned NBBNELEMENTS =4;
     // static const char *BBNElements[NBBNELEMENTS] = {"H", "He", "Li", "Be"};
 
+    enum class AbundanceModel : char
+    {
+        AndersGrevesse = 0,
+        Lodders = 1
+    };
+
     // single element abundance
     struct ElementAbundance
     {
@@ -84,7 +90,7 @@ namespace fm::aped
         static void relative_abundances(std::vector<ElementAbundance> &a_relative_abundances,
                                         const std::vector<unsigned> &a_elements,
                                         const Real a_metallicity,
-                                        const std::string a_abundances_model)
+                                        const AbundanceModel a_abundances_model)
         {
             // make sure elements are within range
             for (const auto a : a_elements)
@@ -105,13 +111,19 @@ namespace fm::aped
 
             // model abundance values
             std::vector<Real> mod_ab;
-            if (a_abundances_model == "AndersGrevesse")
+            switch (a_abundances_model)
+            {
+            case AbundanceModel::AndersGrevesse:
                 mod_ab.assign(AndersGrevesseAbundances, AndersGrevesseAbundances + NUM_APED_ATOMS);
-            else if (a_abundances_model == "Lodders")
+                break;
+            case AbundanceModel::Lodders:
                 mod_ab.assign(LoddersAbundances, LoddersAbundances + NUM_APED_ATOMS);
-            else
-                throw std::runtime_error("abundance model " + a_abundances_model + " is not recongnised ! ");
-
+                break;
+            default:
+                throw std::runtime_error("abundance model " + std::to_string((int)a_abundances_model) + " is not recongnised ! ");
+                break;
+            }
+            
             a_relative_abundances.clear();
             for (const auto &a : elements)
             {
@@ -261,7 +273,7 @@ namespace fm::aped
         void emission_spectrum(std::vector<Real> &a_spectrum,
                                const std::vector<Real> &a_energy,
                                const std::vector<unsigned> &a_elements, // can be empty to mean all
-                               const std::string a_abundances_model,
+                               const AbundanceModel a_abundances_model,
                                const Real a_metallicity,
                                const Real a_temperature,
                                const Real a_doppler_shift,
@@ -278,32 +290,32 @@ namespace fm::aped
             // compute spectrum
             switch (a_line_profile)
             {
-                case LineShape::delta :
-                    emission_spectrum<LineProfile<Delta, NoBroadening>>(a_spectrum, a_energy, rel_ab,
-                                                                        a_temperature, a_doppler_shift,
-                                                                        a_cont_emission, a_line_emission,
-                                                                        a_kernel_tolerance);
-                    break;
-                case LineShape::gaussian:
-                    emission_spectrum<LineProfile<Gaussian, ThermalBroadening>>(a_spectrum, a_energy, rel_ab,
-                                                                                a_temperature, a_doppler_shift,
-                                                                                a_cont_emission, a_line_emission,
-                                                                                a_kernel_tolerance);
-                    break;
-                case LineShape::lorentzian:
-                    emission_spectrum<LineProfile<Lorentzian, ThermalBroadening>>(a_spectrum, a_energy, rel_ab,
-                                                                                  a_temperature, a_doppler_shift,
-                                                                                  a_cont_emission, a_line_emission,
-                                                                                  a_kernel_tolerance);
-                    break;
-                case LineShape::pseudovoigt:
-                    using LP = LineProfile<PseudoVoigt,PseudoVoigtBroadening<ThermalBroadening,ThermalBroadening>>;
-                    emission_spectrum<LP>(a_spectrum, a_energy, rel_ab,
-                                          a_temperature, a_doppler_shift,
-                                          a_cont_emission, a_line_emission, a_kernel_tolerance);
-                    break;
-                default:
-                    std::cerr << "\n LineShape " << static_cast<int>(a_line_profile) << "was not recognised, aped will return!\n\n";
+            case LineShape::delta:
+                emission_spectrum<LineProfile<Delta, NoBroadening>>(a_spectrum, a_energy, rel_ab,
+                                                                    a_temperature, a_doppler_shift,
+                                                                    a_cont_emission, a_line_emission,
+                                                                    a_kernel_tolerance);
+                break;
+            case LineShape::gaussian:
+                emission_spectrum<LineProfile<Gaussian, ThermalBroadening>>(a_spectrum, a_energy, rel_ab,
+                                                                            a_temperature, a_doppler_shift,
+                                                                            a_cont_emission, a_line_emission,
+                                                                            a_kernel_tolerance);
+                break;
+            case LineShape::lorentzian:
+                emission_spectrum<LineProfile<Lorentzian, ThermalBroadening>>(a_spectrum, a_energy, rel_ab,
+                                                                              a_temperature, a_doppler_shift,
+                                                                              a_cont_emission, a_line_emission,
+                                                                              a_kernel_tolerance);
+                break;
+            case LineShape::pseudovoigt:
+                using LP = LineProfile<PseudoVoigt, PseudoVoigtBroadening<ThermalBroadening, ThermalBroadening>>;
+                emission_spectrum<LP>(a_spectrum, a_energy, rel_ab,
+                                      a_temperature, a_doppler_shift,
+                                      a_cont_emission, a_line_emission, a_kernel_tolerance);
+                break;
+            default:
+                std::cerr << "\n LineShape " << static_cast<int>(a_line_profile) << "was not recognised, aped will return!\n\n";
             }
         }
 
@@ -313,7 +325,7 @@ namespace fm::aped
         void emission_spectrum(std::vector<Real> &a_spectrum,
                                const std::vector<Real> &a_energy,
                                const std::vector<unsigned> &a_elements, // can be empty to mean all
-                               const std::string a_abundances_model,
+                               const AbundanceModel a_abundances_model,
                                const Real a_metallicity,
                                const Real a_temperature,
                                const Real a_doppler_shift,
