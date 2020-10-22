@@ -17,7 +17,7 @@
                 "${workspaceFolder}/src/Aped.cpp",
                 "${workspaceFolder}/src/FitsUtil.cpp",
                 "-o",
-                "${workspaceFolder}/exe/${fileBasenameNoExtension}.ex",
+                "${workspaceFolder}/exe/${fileBasenameNoExtension}.exe",
 				"-L/opt/local/lib",
                 "-lm",
                 "-lstdc++",
