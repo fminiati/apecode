@@ -4,7 +4,8 @@
             "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/opt/local/include"
+                "/opt/local/include",
+                "/usr/local/lib/heasoft/heasoft-6.28/x86_64-apple-darwin19.6.0/"
             ],
             "defines": [],
             "macFrameworkPath": [
