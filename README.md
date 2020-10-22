@@ -19,12 +19,12 @@ of the AtomDB database. Execution requires obviously the above database files. T
 seamlessly with either the traditional format using 51 temperature bins or the upgraded version
 with 201 temperature bins, between 10^4 and 10^9 K.
 
-The code tst/test_apecode_vs_heasoft.cpp carries out a element by element comparison as well as a 
-full 28 element spectral calculation comparison with Xspsec's Aped.h code, showing a max relative
-difference of order 10^-5 (partly affected by Xspsec's optimizations of the erf function).
-(tst/test_kernel.cpp is a very simple code looking at the behaviour of the build_kernel function for
-Gaussian and Lorentzian shapes, to get an idea of the slow convergence of the Lorentztian function,
-while exe/aped_spectrum.cpp is a simple use example of Aped.h).
+The code tst/test_apecode_vs_heasoft.cpp carries out a accuracy and performance comparison with 
+Xspsec's Aped.h code both element by element as well as for a full 28 element spectral calculation,
+showing a max relative difference in accuracy of order 10^-5 (partly affected by Xspsec's optimizations
+of the erf function). (tst/test_kernel.cpp is a very simple code looking at the  behaviour of the 
+build_kernel function for Gaussian and Lorentzian shapes, to get an idea of the slow convergence of 
+the Lorentztian function, while exe/aped_spectrum.cpp is a simple use example of Aped.h).
 
 There are two main API's to Aped.h: the one shown here is an ordinary member function which specifies the
 spectrum calculation through a set of input parameters:
