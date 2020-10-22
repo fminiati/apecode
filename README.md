@@ -62,7 +62,7 @@ in the above enum types (LineShape and LineBroadening) are already provided (in 
 this second API enables the user to specify arbitrary line shape and broadening mechanism through 
 template parameters of their own definition.
 
-The second API is as follows:
+The second API is as follows (function parameters with the same name have the same meaning as above):
 
 template <typename LineProfile<typename Shape, typename Broadening>>
 void emission_spectrum(std::vector<Real> &a_spectrum,
