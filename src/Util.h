@@ -78,8 +78,8 @@ namespace fm::aped
     enum class LineBroadening : char
     {
         none = 0,
-        thermal = 1,
-        turbulent = 2
+        thermal = 1
+        //, turbulent = 2
         //, collisional = 3
     };
 
@@ -177,25 +177,25 @@ namespace fm::aped
     // line shapes
     struct Delta
     {
-        static inline constexpr Real wing_integral(const Real) { return 1; }
+        static inline constexpr Real tail_integral(const Real) { return 1; }
     };
    
     struct Gaussian
     {
-        static inline Real wing_integral(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
+        static inline Real tail_integral(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
     };
 
     struct Lorentzian
     {
         static constexpr Real one_over_pi = one / pi;
-        static inline Real wing_integral(const Real a_x)  { return one_over_pi * std::atan(a_x); }
+        static inline Real tail_integral(const Real a_x)  { return one_over_pi * std::atan(a_x); }
     };
 
     struct PseudoVoigt
     {
-        static inline Real wing_integral(const Real a_x) 
+        static inline Real tail_integral(const Real a_x) 
         {
-            return (one - m_eta) * Gaussian::wing_integral(a_x) + m_eta * Lorentzian::wing_integral(a_x);
+            return (one - m_eta) * Gaussian::tail_integral(a_x) + m_eta * Lorentzian::tail_integral(a_x);
         }
         static void set_eta(const Real a_eta) { m_eta = a_eta; }
     protected:
@@ -205,18 +205,18 @@ namespace fm::aped
 
 
     // Broadening describe the mechanism determing the full-width-at-half-maximum
-    template <typename Shape, typename Broadening>
+    template <typename Shape, typename Broadening, bool PsdLineBrd=false>
     struct LineProfile
     {
-        static inline Real wing_integral(const Real a_x) { return Shape::wing_integral(a_x); }
+        static inline Real tail_integral(const Real a_x) { return Shape::tail_integral(a_x); }
         static inline Real fwhm(const Real a_t, const Real a_m, const Real a_e) { return Broadening::fwhm(a_t, a_m, a_e); }
     };
 
     // specialisation for Voigt
-    template <typename Voigt, typename G, typename L, template<typename...> typename Broadening>
-    struct LineProfile<Voigt, Broadening<G,L>>
+    template <typename Voigt, typename G, typename L, template<typename...> typename Broadening, bool PsdLineBrd>
+    struct LineProfile<Voigt, Broadening<G,L>, PsdLineBrd>
     {
-        static inline Real wing_integral(const Real a_x) { return Voigt::wing_integral(a_x); }
+        static inline Real tail_integral(const Real a_x) { return Voigt::tail_integral(a_x); }
         static inline Real fwhm(const Real a_t, const Real a_m, const Real a_e)
         {
             const auto [f, eta] = Broadening<G,L>::fwhm_and_eta(a_t, a_m, a_e);
@@ -228,16 +228,26 @@ namespace fm::aped
     // type traits for line profile
     template <typename T> 
     struct line_profile_type_traits {};
-    template <typename S, typename B>
-    struct line_profile_type_traits<LineProfile<S, B>>
+    template <typename S, typename B, bool Z>
+    struct line_profile_type_traits<LineProfile<S, B, Z>>
     {
+        static_assert(std::is_same_v<S, Delta> == std::is_same_v<B, NoBroadening>,
+                      "Inconsistent Line Profile: choose Delta profile if and only if NoBroadening is the broadening mechanism.");
+        static_assert(std::disjunction_v<std::negation<std::bool_constant<Z>>, std::negation<std::is_same<S, Delta>>>,
+                      "Inconsistent line profile: apply pseudo continuum broadening if and only if line shape is not a delta.");
+
         using shape_t = S;
         using broadening_t = B;
+        static constexpr bool pseudo_cont_broadening_v = Z;
     };
     template <typename T>
     using line_shape_t = typename line_profile_type_traits<T>::shape_t;
     template <typename T>
     using line_broadening_t = typename line_profile_type_traits<T>::broadening_t;
+    template <typename T>
+    inline constexpr bool apply_pseudo_cont_broadening_v = line_profile_type_traits<T>::pseudo_cont_broadening_v;
+    template <typename T>
+    inline constexpr bool apply_line_broadening_v = std::is_same_v<line_shape_t<T>, Delta>;
     template <typename T>
     inline constexpr spacing_t broadening_spacing_v = std::integral_constant<spacing_t, line_broadening_t<T>::spacing()>();
 
@@ -342,8 +352,8 @@ namespace fm::aped
 
             const Real norm = two / a_fwhm;
             { // left wing
-                const Real asymptote = -Shape::wing_integral(-std::numeric_limits<Real>::infinity());
-                Real w = -Shape::wing_integral(norm * (a_x[a_bin] - a_centre));
+                const Real asymptote = -Shape::tail_integral(-std::numeric_limits<Real>::infinity());
+                Real w = -Shape::tail_integral(norm * (a_x[a_bin] - a_centre));
                 a_c[a_bin] += w * a_I0;
 
                 Real wm{};
@@ -351,7 +361,7 @@ namespace fm::aped
                 for (int i = a_bin - 1; err > a_tolerance && i >= 0 && w >= delta_tol; --i)
                 {
                     wm += w;
-                    w = -Shape::wing_integral(norm * (a_x[i] - a_centre)) - wm;
+                    w = -Shape::tail_integral(norm * (a_x[i] - a_centre)) - wm;
                     a_c[i] += w * a_I0;
                     err -= w;
                 }
@@ -362,8 +372,8 @@ namespace fm::aped
 #endif
             }
             { // right wing
-                const Real asymptote = Shape::wing_integral(std::numeric_limits<Real>::infinity());
-                Real w = Shape::wing_integral(norm * (a_x[a_bin + 1] - a_centre));
+                const Real asymptote = Shape::tail_integral(std::numeric_limits<Real>::infinity());
+                Real w = Shape::tail_integral(norm * (a_x[a_bin + 1] - a_centre));
                 a_c[a_bin] += w * a_I0;
 
                 Real wm{};
@@ -371,7 +381,7 @@ namespace fm::aped
                 for (size_t i = a_bin + 1; err > a_tolerance && i < a_c.size() && w >= delta_tol; ++i)
                 {
                     wm += w;
-                    w = Shape::wing_integral(norm * (a_x[i + 1] - a_centre)) - wm;
+                    w = Shape::tail_integral(norm * (a_x[i + 1] - a_centre)) - wm;
                     a_c[i] += w * a_I0;
                     err -= w;
                 }
@@ -394,17 +404,17 @@ namespace fm::aped
         // taking a node and returning the next in line
         auto kernel_weights = [a_kernel_tol](const Real a_centre, const Real a_node, const auto a_next_node) {
             const Real s = two * (a_node > a_centre ? one : -one);
-            const Real asymptote = s * line_shape_t<Profile>::wing_integral(s * std::numeric_limits<Real>::infinity());
+            const Real asymptote = s * line_shape_t<Profile>::tail_integral(s * std::numeric_limits<Real>::infinity());
             const Real delta_tol = MIN_W_INCR_TO_KERNEL_TOL * a_kernel_tol;
 
-            std::vector<Real> w(1, s * line_shape_t<Profile>::wing_integral(a_node - a_centre));
+            std::vector<Real> w(1, s * line_shape_t<Profile>::tail_integral(a_node - a_centre));
             Real node = a_node;
             Real dw = one;
             while (asymptote - w.back() > a_kernel_tol && dw >= delta_tol)
             {
                 dw = -w.back();
                 node = a_next_node(node);
-                w.emplace_back(s * line_shape_t<Profile>::wing_integral(node - a_centre));
+                w.emplace_back(s * line_shape_t<Profile>::tail_integral(node - a_centre));
                 dw += w.back();
             }
 #ifndef NDEBUG

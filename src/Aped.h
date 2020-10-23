@@ -411,11 +411,6 @@ namespace fm::aped
                                  const bool a_line_emission,
                                  const Real a_kernel_tolerance) const
     {
-        static_assert(std::conjunction_v<std::is_same<line_shape_t<Profile>, Delta>,
-                                         std::is_same<line_broadening_t<Profile>, NoBroadening>> ||
-                          std::negation_v<std::disjunction<std::is_same<line_shape_t<Profile>, Delta>,
-                                                           std::is_same<line_broadening_t<Profile>, NoBroadening>>>,
-                      "Inconsistent Line Profile: choose Delta profile if and only if NoBroadening is the broadening mechanism.");
         Timer_t<> t("em_spectrum");
 
         // initialize spectrum
@@ -539,7 +534,7 @@ namespace fm::aped
                         ++energy_bin;
                     energy_bin = (energy_bin > 0 ? energy_bin - 1 : energy_bin);
 
-                    if constexpr (std::is_same_v<line_shape_t<Profile>, Delta>)
+                    if constexpr (apply_line_broadening_v<Profile>)
                     {
                         a_spectrum[energy_bin] += ion.m_line_emissivity[i_line];
                     }
@@ -571,7 +566,7 @@ namespace fm::aped
                                       const Real a_temperature,
                                       const Real a_doppler_shift,
                                       const bool a_cont_emission,
-                                      const bool a_psd_cont_emission,
+                                      const bool a_pseudo_cont_emission,
                                       const Real a_kernel_tolerance) const
     {
         Timer_t<3> t("ion_cont_em");
@@ -628,19 +623,19 @@ namespace fm::aped
         {
             const Ion &ion = ion_iterator->second;
 
-            if (a_psd_cont_emission)
+            if (a_pseudo_cont_emission)
             {
-                Timer_t<4> t("psd_cont_em");
+                Timer_t<4> t("pseudo_cont_em");
 
                 std::vector<Real> pseudo_cont_energy(ion.m_pseudo_cont_energy);
-                if (a_doppler_shift != 0.e0)
+                if (a_doppler_shift != zero)
                 {
                     for (auto &e : pseudo_cont_energy)
                         e *= (one + a_doppler_shift);
                 }
                 interp_cont_emission(ion.m_pseudo_cont, pseudo_cont_energy);
 
-                if constexpr (false && !std::is_same_v<line_shape_t<Profile>, Delta>)
+                if constexpr (apply_pseudo_cont_broadening_v<Profile>)
                 {
                     Timer_t<4> t("convolution");
 
