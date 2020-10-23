@@ -102,8 +102,9 @@ int main(int argc, char *argv[])
     input.get_item(metallicity, "aped.plasma_metallicity");
 
     // abundance model
-    std::string abundance_model = "Lodders";
-    input.get_item(abundance_model, "aped.plasma_abundance_model");
+    int int_abundance_model = 0;
+    input.get_item(int_abundance_model, "aped.plasma_abundance_model");
+    fm::aped::AbundanceModel abundance_model=static_cast<fm::aped::AbundanceModel>(int_abundance_model);
 
     // line emission
     bool line_emission = false;
@@ -186,7 +187,7 @@ int main(int argc, char *argv[])
              << "#  Emax[keV]= " << std::setprecision(4) << emax << '\n'
              << "#  Doppler Shft = " << std::setprecision(4) << doppler_shift << '\n'
              << "#  Metallicity  = " << std::setprecision(4) << metallicity << '\n'
-             << "#  Abund. Model = " << abundance_model << '\n'
+             << "#  Abund. Model = " << (int_abundance_model==0?"AndersGravesse":"Lodders") << '\n'
              << "#  Line Emission= " << (line_emission ? "Yes" : "No") << '\n'
              << "#  Cont Emission= " << (cont_emission ? "Yes" : "No") << '\n'
              << "#  Spectral Res.= " << std::setprecision(4) << de << '\n'
