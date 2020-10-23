@@ -1,4 +1,6 @@
-# Apecode is a code to compute astrophysical plasma spectral emission based on the AtomDB database
+# Apecode
+
+Apecode is a code to compute astrophysical plasma spectral emission based on the AtomDB database.
 
 The main code is contained in the class object Aped (Aped.h, Aped.cpp) while additional utility
 functions are in Util.h and FitsUtil.h. The code structure reflects the AtomDB database as
