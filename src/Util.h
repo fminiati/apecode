@@ -205,7 +205,7 @@ namespace fm::aped
 
 
     // Broadening describe the mechanism determing the full-width-at-half-maximum
-    template <typename Shape, typename Broadening, bool PsdLineBrd=false>
+    template <typename Shape, typename Broadening, bool PseudoContBrd=false>
     struct LineProfile
     {
         static inline Real tail_integral(const Real a_x) { return Shape::tail_integral(a_x); }
@@ -213,8 +213,8 @@ namespace fm::aped
     };
 
     // specialisation for Voigt
-    template <typename Voigt, typename G, typename L, template<typename...> typename Broadening, bool PsdLineBrd>
-    struct LineProfile<Voigt, Broadening<G,L>, PsdLineBrd>
+    template <typename Voigt, typename G, typename L, template<typename...> typename Broadening, bool PseudoContBrd>
+    struct LineProfile<Voigt, Broadening<G,L>, PseudoContBrd>
     {
         static inline Real tail_integral(const Real a_x) { return Voigt::tail_integral(a_x); }
         static inline Real fwhm(const Real a_t, const Real a_m, const Real a_e)
