@@ -1,6 +1,6 @@
 BIN    = -L/opt/local/bin
 LIB    = -L/opt/local/lib
-INCL   = -I/opt/local/include -I./../src
+INCL   = -I/opt/local/include -I./../src -I./../exe
 SRCDIR = ../src/
 EXEDIR = ../exe/
 TSTDIR = ../tst/

@@ -177,25 +177,25 @@ namespace fm::aped
     // line shapes
     struct Delta
     {
-        static inline constexpr Real area(const Real) { return 1; }
+        static inline constexpr Real wing_integral(const Real) { return 1; }
     };
    
     struct Gaussian
     {
-        static inline Real area(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
+        static inline Real wing_integral(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
     };
 
     struct Lorentzian
     {
         static constexpr Real one_over_pi = one / pi;
-        static inline Real area(const Real a_x)  { return one_over_pi * std::atan(a_x); }
+        static inline Real wing_integral(const Real a_x)  { return one_over_pi * std::atan(a_x); }
     };
 
     struct PseudoVoigt
     {
-        static inline Real area(const Real a_x) 
+        static inline Real wing_integral(const Real a_x) 
         {
-            return (one - m_eta) * Gaussian::area(a_x) + m_eta * Lorentzian::area(a_x);
+            return (one - m_eta) * Gaussian::wing_integral(a_x) + m_eta * Lorentzian::wing_integral(a_x);
         }
         static void set_eta(const Real a_eta) { m_eta = a_eta; }
     protected:
@@ -208,7 +208,7 @@ namespace fm::aped
     template <typename Shape, typename Broadening>
     struct LineProfile
     {
-        static inline Real area(const Real a_x) { return Shape::area(a_x); }
+        static inline Real wing_integral(const Real a_x) { return Shape::wing_integral(a_x); }
         static inline Real fwhm(const Real a_t, const Real a_m, const Real a_e) { return Broadening::fwhm(a_t, a_m, a_e); }
     };
 
@@ -216,7 +216,7 @@ namespace fm::aped
     template <typename Voigt, typename G, typename L, template<typename...> typename Broadening>
     struct LineProfile<Voigt, Broadening<G,L>>
     {
-        static inline Real area(const Real a_x) { return Voigt::area(a_x); }
+        static inline Real wing_integral(const Real a_x) { return Voigt::wing_integral(a_x); }
         static inline Real fwhm(const Real a_t, const Real a_m, const Real a_e)
         {
             const auto [f, eta] = Broadening<G,L>::fwhm_and_eta(a_t, a_m, a_e);
@@ -342,8 +342,8 @@ namespace fm::aped
 
             const Real norm = two / a_fwhm;
             { // left wing
-                const Real asymptote = -Shape::area(-std::numeric_limits<Real>::infinity());
-                Real w = -Shape::area(norm * (a_x[a_bin] - a_centre));
+                const Real asymptote = -Shape::wing_integral(-std::numeric_limits<Real>::infinity());
+                Real w = -Shape::wing_integral(norm * (a_x[a_bin] - a_centre));
                 a_c[a_bin] += w * a_I0;
 
                 Real wm{};
@@ -351,7 +351,7 @@ namespace fm::aped
                 for (int i = a_bin - 1; err > a_tolerance && i >= 0 && w >= delta_tol; --i)
                 {
                     wm += w;
-                    w = -Shape::area(norm * (a_x[i] - a_centre)) - wm;
+                    w = -Shape::wing_integral(norm * (a_x[i] - a_centre)) - wm;
                     a_c[i] += w * a_I0;
                     err -= w;
                 }
@@ -362,8 +362,8 @@ namespace fm::aped
 #endif
             }
             { // right wing
-                const Real asymptote = Shape::area(std::numeric_limits<Real>::infinity());
-                Real w = Shape::area(norm * (a_x[a_bin + 1] - a_centre));
+                const Real asymptote = Shape::wing_integral(std::numeric_limits<Real>::infinity());
+                Real w = Shape::wing_integral(norm * (a_x[a_bin + 1] - a_centre));
                 a_c[a_bin] += w * a_I0;
 
                 Real wm{};
@@ -371,7 +371,7 @@ namespace fm::aped
                 for (size_t i = a_bin + 1; err > a_tolerance && i < a_c.size() && w >= delta_tol; ++i)
                 {
                     wm += w;
-                    w = Shape::area(norm * (a_x[i + 1] - a_centre)) - wm;
+                    w = Shape::wing_integral(norm * (a_x[i + 1] - a_centre)) - wm;
                     a_c[i] += w * a_I0;
                     err -= w;
                 }
@@ -394,17 +394,17 @@ namespace fm::aped
         // taking a node and returning the next in line
         auto kernel_weights = [a_kernel_tol](const Real a_centre, const Real a_node, const auto a_next_node) {
             const Real s = two * (a_node > a_centre ? one : -one);
-            const Real asymptote = s * line_shape_t<Profile>::area(s * std::numeric_limits<Real>::infinity());
+            const Real asymptote = s * line_shape_t<Profile>::wing_integral(s * std::numeric_limits<Real>::infinity());
             const Real delta_tol = MIN_W_INCR_TO_KERNEL_TOL * a_kernel_tol;
 
-            std::vector<Real> w(1, s * line_shape_t<Profile>::area(a_node - a_centre));
+            std::vector<Real> w(1, s * line_shape_t<Profile>::wing_integral(a_node - a_centre));
             Real node = a_node;
             Real dw = one;
             while (asymptote - w.back() > a_kernel_tol && dw >= delta_tol)
             {
                 dw = -w.back();
                 node = a_next_node(node);
-                w.emplace_back(s * line_shape_t<Profile>::area(node - a_centre));
+                w.emplace_back(s * line_shape_t<Profile>::wing_integral(node - a_centre));
                 dw += w.back();
             }
 #ifndef NDEBUG
