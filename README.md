@@ -15,9 +15,9 @@ Aped uses a user defined (in Util.h) datatype "Real" for both the database data,
 and returned spectrum.
 
 In addition to C++17, compilation requires cfitsio libraries given the FITS binary file format 
-of the AtomDB database. Execution requires obviously the above database files. The code works 
-seamlessly with either the traditional format using 51 temperature bins or the upgraded version
-with 201 temperature bins, between 10^4 and 10^9 K.
+of the AtomDB database (I have used so far clang and gnu compilers). Execution requires obviously
+the above database files. The code works seamlessly with either the traditional format using 51 
+temperature bins or the upgraded version with 201 temperature bins, between 10^4 and 10^9 K. I have 
 
 The code tst/test_apecode_vs_heasoft.cpp carries out a accuracy and performance comparison with 
 Xspsec's Aped.h code both element by element as well as for a full 28 element spectral calculation,
@@ -76,13 +76,13 @@ void emission_spectrum(std::vector<Real> &a_spectrum,
                        const bool a_line_emission,
                        const Real a_kernel_tolerance) const;
 
-Here Shape is a template parameter which contains (at least) a function "area(const Real x)"
+Here Shape is a template parameter which contains (at least) a function "wing_integral(const Real x)"
 returning the integral of the line shape from the line centre up to a distance x normalised
 to half the FWHM. For example, for a Gaussian shape we would use the following object:
 
 struct Gaussian
 {
-    static inline Real area(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
+    static inline Real wing_integral(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
 };
 
 Likewise the Broadening template parameter contains (at least) a function returning the 
@@ -105,7 +105,7 @@ it's log_uniform because it is proportional to the energy itself (and would be u
 Finally LineProfile is the following class template:
 template <typename Shape, typename Broadening> struct LineProfile
 {
-    static inline Real area(const Real a_x) { return Shape::area(a_x); }
+    static inline Real wing_integral(const Real a_x) { return Shape::wing_integral(a_x); }
     static inline Real fwhm(const Real a_t, const Real a_m, const Real a_e) { return Broadening::fwhm(a_t, a_m, a_e); }
 };
 
@@ -116,7 +116,7 @@ combination of a Gaussian and Lorentzian shape with linear parameter eta, we can
 template <typename Voigt, typename G, typename L, template<typename...> typename Broadening>
 struct LineProfile<Voigt, Broadening<G,L>>
 {
-    static inline Real area(const Real a_x) { return Voigt::area(a_x); }
+    static inline Real wing_integral(const Real a_x) { return Voigt::wing_integral(a_x); }
     static inline Real fwhm(const Real a_t, const Real a_m, const Real a_e)
     {
         const auto [f, eta] = Broadening<G,L>::fwhm_and_eta(a_t, a_m, a_e);
