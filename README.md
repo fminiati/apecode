@@ -185,8 +185,8 @@ but offers the possibility to specify the abundance of each element:
                            const bool a_line_emission,
                            const Real a_kernel_tolerance) const;
 
-Thus instead of a_abundance_model and a std::vector<#unsigned> of atomic numbers here the API
-takes as input a std::vector<#ElementAbundance>. ElementAbundance is the following struct type:
+Thus instead of a_abundance_model and a std::vector< unsigned > of atomic numbers here the API
+takes as input a std::vector< ElementAbundance >. ElementAbundance is the following struct type:
 
     struct ElementAbundance
     {
