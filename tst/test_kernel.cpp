@@ -4,7 +4,6 @@
 #include <cmath>
 #include <cassert>
 #include <type_traits>
-#define USE_APED
 #include "Util.h"
 
 using namespace fm::aped;
