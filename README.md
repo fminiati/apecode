@@ -60,15 +60,17 @@ the following enum type:
     enum class LineShape : char { delta = 0,  gaussian = 1, lorentzian = 2, pseudovoigt = 3 };
 
 Here Gaussian and Lorentzian shapes have their usual meaning while a pseudo-Voigt shape is a linear combination thereof.
-In all these cases the line's full-width-at-half-maximum is be set by a thermal broadening mechansmism (see below).
+In all these cases the line's full-width-at-half-maximum is be set by a thermal broadening mechansmism (see below)
+and the line shape is not applied to the pseudo continuum emission.
 
-If this proves too restrictive a second API allows the user to model the spectral emission
+If any of this proves too restrictive a second API allows the user to model the spectral emission
 lines according to any shape and line broadening mechanism (which determines the
-line's full-width-at-half-maximum) of their own choice. This second API is provided as a function
+line's full-width-at-half-maximum) of their own choice and decide whether such broadening shall also
+be applied to the pseudo continuum emission. This second API is provided as a function
 template whose template parameters take as argument object classes with static functions expressing
 the required functionality (in fact the first API wraps around this function using as template
-argument objects classes properly defined in Util.h for each case enlisted in LineShape).
-So the second API is as follows (function parameters with the same name have the same meaning as above):
+argument object classes properly defined in Util.h for each case enlisted in LineShape).
+The second API is as follows (function parameters with the same name have the same meaning as above):
 
     template <typename LineProfile<typename Shape, typename Broadening, bool PseudoContBrd>>
     void emission_spectrum(std::vector<Real> &a_spectrum,
@@ -92,13 +94,11 @@ For example, for a Gaussian shape we have use the following object:
         static inline Real tail_integral(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
     };
 
-The shape is basically only required to be normalised, i.e.:
+Skewed distributions can be used as the tail_integral is basically only required to be normalised, i.e.:
 
     tail_integral(+inf)-tail_integral(-inf) = 1.
 
-So in particular skewed distributions are allowed.
-
-Likewise the Broadening template parameter takes as argument an object containing (at least)
+Likewise the Broadening template parameter takes as argument an object containing
 a function returning the the line's full-width-at-half-maximum. For thermal broadening we use:
 
     struct ThermalBroadening
