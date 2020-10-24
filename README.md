@@ -18,7 +18,7 @@ Aped uses a user defined (in Util.h) datatype "Real" for both the database data,
 and returned spectrum.
 
 In addition to C++17, compilation requires cfitsio libraries given the FITS binary file format
-of the AtomDB database (I have used so far clang and gnu compilers). Execution requires obviously
+of the AtomDB database (tested so far with clang and gnu compilers). Execution requires obviously
 the above database files. The code works seamlessly with either the traditional format using 51
 temperature bins or the upgraded version with 201 temperature bins, between 10^4 and 10^9 K. I have
 
@@ -30,8 +30,8 @@ at the  behaviour of the build_kernel function for Gaussian and Lorentzian shape
 of the slow convergence of the Lorentzian function, while exe/aped_spectrum.cpp is a simple use
 example of Aped.h).
 
-There are three API's to Aped.h: the one shown here is an ordinary member function which
-specifies the spectrum calculation through a set of input parameters:
+There are three API's to Aped.h: the simplest is the one shown here, an ordinary member
+function which specifies the spectrum calculation through a set of input parameters:
 
     // photon emission spectrum in ph cm^3 s^-1
     void emission_spectrum(std::vector<Real> &a_spectrum,           // output emission spectrum
@@ -53,23 +53,22 @@ In particular the a_abundances_model parameter selects the abundance model from 
 
     enum class AbundanceModel : char  { AndersGrevesse = 0, Lodders = 1 };
 
-This is quite limited but as shown further below there is the possibility to specify any input abundance model.
-Likewise, a_line_profile and a_line_broadening select, respectively, the line shape and broadening
-mechanism from a limited set of choices defined by the following enum types:
+This is quite limited but as shown further down there is the possibility to specify any input abundance model.
+Likewise, a_line_profile selects the line shape from a set of predefined choices corresponding to
+the following enum type:
 
     enum class LineShape : char { delta = 0,  gaussian = 1, lorentzian = 2, pseudovoigt = 3 };
 
-LineShape determines the shape of the emission line. Gaussian and Lorentzian shapes have their usual meaning
-while a pseudo-Voigt shape is a linear combination thereof. In these cases the line's full-width-at-half-maximum
-is assumed to be set by a thermal broadening mechansmism.
+Here Gaussian and Lorentzian shapes have their usual meaning while a pseudo-Voigt shape is a linear combination thereof.
+In all these cases the line's full-width-at-half-maximum is be set by a thermal broadening mechansmism (see below).
 
-In case this proves too restrictive a second API allows the user to model the spectral emission
+If this proves too restrictive a second API allows the user to model the spectral emission
 lines according to any shape and line broadening mechanism (which determines the
-line's full-width-at-half-maximum) of their own choice. This second API is provided by a function
-template whose template parameters are object classes with static function expressing
-the required functionality (in fact the first API calls this function using objects classes
-for the default cases enlisted in the above enum types LineShape which can be found in Util.h).
-The second API is as follows (function parameters with the same name have the same meaning as above):
+line's full-width-at-half-maximum) of their own choice. This second API is provided as a function
+template whose template parameters take as argument object classes with static functions expressing
+the required functionality (in fact the first API wraps around this function using as template
+argument objects classes properly defined in Util.h for each case enlisted in LineShape).
+So the second API is as follows (function parameters with the same name have the same meaning as above):
 
     template <typename LineProfile<typename Shape, typename Broadening, bool PseudoContBrd>>
     void emission_spectrum(std::vector<Real> &a_spectrum,
@@ -85,15 +84,15 @@ The second API is as follows (function parameters with the same name have the sa
 
 Here Shape is a template parameter which takes as argument an object containing (at least) a
 function "tail_integral(const Real x)" that returns the integral of the line shape from the
-line centre to x, the signed distance therefrom normalised to half the FWHM. For example,
-for a Gaussian shape we have use the following object:
+line centre to x, the signed distance therefrom normalised to half the full-width-at-half-maximum.
+For example, for a Gaussian shape we have use the following object:
 
     struct Gaussian
     {
         static inline Real tail_integral(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
     };
 
-The shape is just required to be normalised, i.e.:
+The shape is basically only required to be normalised, i.e.:
 
     tail_integral(+inf)-tail_integral(-inf) = 1.
 
