@@ -67,14 +67,6 @@ namespace fm::aped
     // conversion from keV to Kelvin
     constexpr Real keVToKelvin = 1.1604505e7;
 
-    enum class LineShape : char
-    {
-        delta = 0,
-        gaussian = 1,
-        lorentzian = 2,
-        pseudovoigt = 3
-    };
-
     struct Spacing
     {
         enum type : char

@@ -70,6 +70,14 @@ namespace fm::aped
         Lodders = 1
     };
 
+    enum class LineShape : char
+    {
+        delta = 0,
+        gaussian = 1,
+        lorentzian = 2,
+        pseudovoigt = 3
+    };
+
     // single element abundance
     struct ElementAbundance
     {
