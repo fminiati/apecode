@@ -112,13 +112,9 @@ int main(int argc, char *argv[])
     input.get_item(cont_emission, "aped.use_cont_emission");
 
     // default is delta function
-    fm::aped::LineShape line_shape = static_cast<fm::aped::LineShape>(0);
-    if (int_line_broadening)
-    {
-        int int_line_shape = 0;
-        input.get_item(int_line_shape, "aped.line_shape");
-        line_shape = static_cast<fm::aped::LineShape>(int_line_shape);
-    }
+    int int_line_shape = 0;
+    input.get_item(int_line_shape, "aped.line_shape");
+    fm::aped::LineShape line_shape = static_cast<fm::aped::LineShape>(int_line_shape);
 
     // number of elements
     int num_elements;
@@ -160,7 +156,7 @@ int main(int argc, char *argv[])
         return status;
     std::cout << " done! \n";
 
-    std_aped.SetThermalBroadening(int_line_broadening==1);
+    std_aped.SetThermalBroadening(int_line_shape==1);
     std_aped.SetVelocityBroadening(velocity);
     std_aped.SetNoLines(!line_emission);
     //std_aped.SetNoResonanceLines(!line_emission);
@@ -302,7 +298,6 @@ int main(int argc, char *argv[])
                                       cont_emission,
                                       line_emission,
                                       line_shape,
-                                      line_broadening,
                                       kernel_tolerance);
             const auto t_e{Clock::now()};
             fm_full_dur = t_e - t_i;

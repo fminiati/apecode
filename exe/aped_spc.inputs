@@ -35,7 +35,7 @@ aped.min_ph_energy[keV]=0.1
 aped.max_ph_energy[keV]=12.0
 
 # using log scale for ph energy (0=no,1=yes)
-aped.use_log_energy_scale=1
+aped.use_log_energy_scale=0
 
 # spectral resolution
 aped.spectral_energy_resolution=0.001

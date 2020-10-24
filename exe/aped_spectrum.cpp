@@ -119,13 +119,9 @@ int main(int argc, char *argv[])
     input.get_item(output_file, "aped.output_file_name");
 
     // default is delta function
-    fm::aped::LineShape line_shape = static_cast<fm::aped::LineShape>(0);
-    if (int_line_broadening)
-    {
-        int int_line_shape = 0;
-        input.get_item(int_line_shape, "aped.line_shape");
-        line_shape = static_cast<fm::aped::LineShape>(int_line_shape);
-    }
+    int int_line_shape = 0;
+    input.get_item(int_line_shape, "aped.line_shape");
+    fm::aped::LineShape line_shape = static_cast<fm::aped::LineShape>(int_line_shape);
 
     // number of elements
     int num_elements;
@@ -162,7 +158,6 @@ int main(int argc, char *argv[])
                            cont_emission,
                            line_emission,
                            line_shape,
-                           line_broadening,
                            kernel_tolerance);
 
     std::cout << " size of emission spectrum is " << spectrum.size() << '\n';

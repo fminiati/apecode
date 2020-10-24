@@ -108,12 +108,7 @@ a function returning the the line's full-width-at-half-maximum. For thermal broa
         {
             return sqrt_8_ln2_to_c_cgs * std::sqrt(kB_cgs * a_temp / a_atomic_mass) * a_ph_energy;
         }
-        static constexpr spacing_t spacing() { return Spacing::log_uniform; }
     };
-
-Here the spacing function returns the type of spacing associated to this mechanism and is used for
-optimising the convolution in case the energy grid shares the same spacing type. In this case
-it's log_uniform because it is proportional to the energy itself (and would be uniform in log space).
 
 The PseudoContBrd is a boolean type template which specifies whether or not the broadening should also be
 applied to the pseudo continuum emission. Its default value is set to false as in Xspec (see below).
@@ -162,11 +157,6 @@ and provide a
             const Real eta = eta_FUNCTION(fwhmG,fwhmL);   // see Util.h for details
 
             return std::pair(f, eta);
-        }
-        static constexpr spacing_t spacing()
-        {
-            // sometimes Lorentizian are used with thermal broadening...
-            return GaussianBroadening::spacing() == LorentzianBroadening::spacing() ? GaussianBroadening::spacing() : Spacing::irregular;
         }
     };
 

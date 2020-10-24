@@ -247,7 +247,7 @@ namespace fm::aped
     {
         // null constructor
         Aped()
-            : m_verbosity{0}, m_energy_spacing{Spacing::undetermined}
+            : m_verbosity{0}
         {}
         // full constructor
         Aped(const std::string a_aped_path, const std::string a_version, const int a_verbosity = 0);
@@ -392,7 +392,8 @@ namespace fm::aped
         // verbosity, zero by default
         int m_verbosity;
         // spacing of spectral energy nodes
-        mutable spacing_t m_energy_spacing;
+        mutable Spacing::type m_energy_spacing{Spacing::undetermined};
+        mutable Spacing::type m_broadening_spacing{Spacing::undetermined};
 
         std::vector<Real> m_temperatures;
         std::vector<Real> m_density;
@@ -425,7 +426,21 @@ namespace fm::aped
         std::memset(&a_spectrum[0], 0, sizeof(Real) * a_spectrum.size());
 
         // set spacing of energy grid
-        m_energy_spacing = Spacing::grid_spacing(a_energy);
+        if constexpr (apply_pseudo_cont_broadening_v<Profile>)
+        {
+            constexpr Real eps = std::numeric_limits<Real>::epsilon();
+            const Real fwhm_one = Profile::fwhm(a_temperature, AMU_cgs, one);
+            const Real fwhm_two = Profile::fwhm(a_temperature, AMU_cgs, two);
+
+            if (std::fabs(fwhm_one -fwhm_two)<eps*fwhm_one) 
+                m_broadening_spacing = Spacing::linear_uniform;
+            else if (std::fabs(two * fwhm_one - fwhm_two) < eps * fwhm_one)
+                m_broadening_spacing = Spacing::log_uniform;
+            else
+                m_broadening_spacing = Spacing::undetermined;
+
+            m_energy_spacing = Spacing::grid_spacing(a_energy);
+        }
 
         // if T is within allowed range
         if (a_temperature >= m_temperatures.front() && a_temperature <= m_temperatures.back())
@@ -498,7 +513,7 @@ namespace fm::aped
                     }
                 }
             }
-        }
+            }
     }
 
     template <typename Profile>
@@ -646,11 +661,11 @@ namespace fm::aped
                 {
                     Timer_t<4> t("convolution");
 
-                    if (Spacing::is_uniform(m_energy_spacing) && broadening_spacing_v<Profile> == m_energy_spacing)
+                    if (Spacing::is_uniform(m_energy_spacing) && m_broadening_spacing == m_energy_spacing)
                     {
                         const Real x_fwhm = Profile::fwhm(a_temperature, AMU_cgs * a_atom.m_atomic_mass, one);
                         const Real mesh_size = m_energy_spacing == Spacing::log_uniform ? a_energy[1] / a_energy[0] : a_energy[1] - a_energy[0];
-                        Convolution::convolve(a_continuum, build_kernel<Profile>(mesh_size / x_fwhm, a_kernel_tolerance));
+                        Convolution::convolve(a_continuum, build_kernel<Profile>(mesh_size / x_fwhm, a_kernel_tolerance, m_energy_spacing));
                     }
                     else
                     {

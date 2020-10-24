@@ -111,13 +111,11 @@ namespace fm::aped
             return Spacing::irregular;
         }
     };
-    using spacing_t = Spacing::type;
 
-    // broadening mechanism determining FWHM of emission lines and its corresponding type of spacing
+    // broadening mechanism determining FWHM of emission lines
     struct NoBroadening
     {
         static constexpr inline Real fwhm(const Real, const Real, const Real) { return 0; }
-        static constexpr spacing_t spacing() { return Spacing::undetermined; }
     };
     struct ThermalBroadening
     {
@@ -126,7 +124,6 @@ namespace fm::aped
         {
             return sqrt_8_ln2_to_c_cgs * std::sqrt(kB_cgs * a_temp / a_atomic_mass) * a_ph_energy;
         }
-        static constexpr spacing_t spacing() { return Spacing::log_uniform; }
     };
 
     // define voigt broadening two mechanism through templates
@@ -151,10 +148,6 @@ namespace fm::aped
             const Real eta = x * (1.36603 + x * (-0.47719 + x * 0.11116));
 
             return std::pair(f, eta);
-        }
-        static constexpr spacing_t spacing()
-        {
-            return GaussianBroadening::spacing() == LorentzianBroadening::spacing() ? GaussianBroadening::spacing() : Spacing::irregular;
         }
     };
 
@@ -232,8 +225,6 @@ namespace fm::aped
     inline constexpr bool apply_pseudo_cont_broadening_v = line_profile_type_traits<T>::pseudo_cont_broadening_v;
     template <typename T>
     inline constexpr bool apply_line_broadening_v = std::is_same_v<line_shape_t<T>, Delta>;
-    template <typename T>
-    inline constexpr spacing_t broadening_spacing_v = std::integral_constant<spacing_t, line_broadening_t<T>::spacing()>();
 
     struct Kernel
     {
@@ -379,9 +370,8 @@ namespace fm::aped
     };
 
     template <typename Profile>
-    auto build_kernel(const Real a_length, const Real a_kernel_tol)
+    auto build_kernel(const Real a_length, const Real a_kernel_tol, const Spacing::type a_spacing)
     {
-        static_assert(Spacing::is_uniform(broadening_spacing_v<Profile>), "build_kernel requires uniform Spacing type");
         Timer_t<3> t("build_kernel");
 
         // compute integral of shape from centre to a mesh nodes along a wing. a_next_node is a function 
@@ -412,12 +402,12 @@ namespace fm::aped
         std::vector<Real> wm, wp, w;
         {
             const Real lo = one, mid = one + half * a_length, hi = one + a_length;
-            if constexpr (broadening_spacing_v<Profile> == Spacing::log_uniform)
+            if (a_spacing == Spacing::log_uniform)
             {
                 wm = kernel_weights(mid, lo, [f = one / a_length](const Real x) { return f * x; });
                 wp = kernel_weights(mid, hi, [f = a_length](const Real x) { return f * x; });
             }
-            else if constexpr (broadening_spacing_v<Profile> == Spacing::linear_uniform)
+            else if (a_spacing == Spacing::linear_uniform)
             {
                 wm = kernel_weights(mid, lo, [dx = a_length](const Real x) { return x - dx; });
                 wp = kernel_weights(mid, hi, [dx = a_length](const Real x) { return x + dx; });
