@@ -75,14 +75,6 @@ namespace fm::aped
         pseudovoigt = 3
     };
 
-    enum class LineBroadening : char
-    {
-        none = 0,
-        thermal = 1
-        //, turbulent = 2
-        //, collisional = 3
-    };
-
     struct Spacing
     {
         enum type : char

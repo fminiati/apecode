@@ -60,12 +60,6 @@ aped.use_line_emission=1
 # use line emission (0=no,1=yes)
 aped.use_cont_emission=1
 
-# line broadening mechanism
-# 0 = none - turned off
-# 1 = thermal
-# 2 = turbulent
-aped.line_broadening=1
-
 # line shape
 # delta = 0
 # gaussian = 1

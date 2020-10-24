@@ -46,7 +46,6 @@ specifies the spectrum calculation through a set of input parameters:
                            const bool a_cont_emission,              // whether to include continuum emission
                            const bool a_line_emission,              // whether to include line (and pseudo cont) emission
                            const LineShape a_line_profile,          // select line profile from enum type LineShape
-                           const LineBroadening a_line_broadening,  // select broadening mechanism from enum type LineBroadening
                            const Real a_kernel_tolerance = 1.e-6) const; // tolerated error for convolution of line emission on the 
                                                                     // spectrum's grid when a_line_shape is not delta function
 
@@ -60,17 +59,17 @@ mechanism from a limited set of choices defined by the following enum types:
 
     enum class LineShape : char { delta = 0,  gaussian = 1, lorentzian = 2, pseudovoigt = 3 };
 
-    enum class LineBroadening : char { none = 0, thermal = 1 /*, turbulent = 2, collisional = 3 */ };
+LineShape determines the shape of the emission line. Gaussian and Lorentzian shapes have their usual meaning
+while a pseudo-Voigt shape is a linear combination thereof. In these cases the line's full-width-at-half-maximum
+is assumed to be set by a thermal broadening mechansmism.
 
-LineShape determines the shape of the emission line and LineBroadening the function calculating
-the full-width-at-half-maximum. This polymorphic behavior is expressed through the implementation
-of a function template whose template parameters are object classes with static function providing
-the required functionality. This takes us to the second main API for computing the plasma emission
-spectrum shown below. Notice that objects classes for the default cases enlisted in the above enum types
-(LineShape and LineBroadening) are already provided (in Util.h). However, this second API enables
-the user to specify arbitrary line shape and broadening mechanism through template parameters of
-their own definition. The second API is as follows (function parameters with the same name have
-the same meaning as above):
+In case this proves too restrictive a second API allows the user to model the spectral emission
+lines according to any shape and line broadening mechanism (which determines the
+line's full-width-at-half-maximum) of their own choice. This second API is provided by a function
+template whose template parameters are object classes with static function expressing
+the required functionality (in fact the first API calls this function using objects classes
+for the default cases enlisted in the above enum types LineShape which can be found in Util.h).
+The second API is as follows (function parameters with the same name have the same meaning as above):
 
     template <typename LineProfile<typename Shape, typename Broadening, bool PseudoContBrd>>
     void emission_spectrum(std::vector<Real> &a_spectrum,
@@ -84,22 +83,24 @@ the same meaning as above):
                            const bool a_line_emission,
                            const Real a_kernel_tolerance) const;
 
-Here Shape is a template parameter which contains (at least) a function "tail_integral(const Real x)"
-returning the integral of the line shape from the line centre to x, the signed distance therefrom
-normalised to half the FWHM. For example, for a Gaussian shape we have defined the following object:
+Here Shape is a template parameter which takes as argument an object containing (at least) a
+function "tail_integral(const Real x)" that returns the integral of the line shape from the
+line centre to x, the signed distance therefrom normalised to half the FWHM. For example,
+for a Gaussian shape we have use the following object:
 
     struct Gaussian
     {
         static inline Real tail_integral(const Real a_x)  { return half * std::erf(sqrt_ln2 * a_x); }
     };
 
-It is possible to have skewed distributions, the only requirement is that the shape has normalised
-total area, i.e.:
+The shape is just required to be normalised, i.e.:
 
     tail_integral(+inf)-tail_integral(-inf) = 1.
 
-Likewise the Broadening template parameter contains (at least) a function returning the
-the line's full-width-at-half-maximum. For thermal broadening we use:
+So in particular skewed distributions are allowed.
+
+Likewise the Broadening template parameter takes as argument an object containing (at least)
+a function returning the the line's full-width-at-half-maximum. For thermal broadening we use:
 
     struct ThermalBroadening
     {
@@ -115,8 +116,8 @@ Here the spacing function returns the type of spacing associated to this mechani
 optimising the convolution in case the energy grid shares the same spacing type. In this case
 it's log_uniform because it is proportional to the energy itself (and would be uniform in log space).
 
-The PseudoContBrd is a boolean type template which specifies whether or not the broadening
-should also be applied to pseudo continuum. Its default value is set to false as in Xspec (see below).
+The PseudoContBrd is a boolean type template which specifies whether or not the broadening should also be
+applied to the pseudo continuum emission. Its default value is set to false as in Xspec (see below).
 
 Finally LineProfile is the following class template:
 
@@ -157,8 +158,10 @@ and provide a
         {
             const Real fwhmG = GaussianBroadening::fwhm(a_t, a_m, a_e);
             const Real fwhmL = LorentzianBroadening::fwhm(a_t, a_m, a_e);
-            const Real fwhm = fwhm_USER_DEF_FUNCTION(fwhmG,fwhmL);
-            const Real eta = eta_USER_DEF_FUNCTION(fwhmG,fwhmL);
+
+            const Real fwhm = fwhm_FUNCTION(fwhmG,fwhmL); // see Util.h for details
+            const Real eta = eta_FUNCTION(fwhmG,fwhmL);   // see Util.h for details
+
             return std::pair(f, eta);
         }
         static constexpr spacing_t spacing()
@@ -185,8 +188,8 @@ but offers the possibility to specify the abundance of each element:
                            const bool a_line_emission,
                            const Real a_kernel_tolerance) const;
 
-Thus instead of a_abundance_model and a std::vector< unsigned > of atomic numbers here the API
-takes as input a std::vector< ElementAbundance >. ElementAbundance is the following struct type:
+Here instead of a_abundance_model and a std::vector< unsigned > of atomic numbers the API
+takes as input argument a std::vector< ElementAbundance >. ElementAbundance is the following struct type:
 
     struct ElementAbundance
     {

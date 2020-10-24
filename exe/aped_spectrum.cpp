@@ -118,11 +118,6 @@ int main(int argc, char *argv[])
     std::string output_file;
     input.get_item(output_file, "aped.output_file_name");
 
-    // no line broadening
-    int int_line_broadening = 0;
-    input.get_item(int_line_broadening, "aped.line_broadening");
-    fm::aped::LineBroadening line_broadening=static_cast<fm::aped::LineBroadening>(int_line_broadening);
-
     // default is delta function
     fm::aped::LineShape line_shape = static_cast<fm::aped::LineShape>(0);
     if (int_line_broadening)

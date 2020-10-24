@@ -280,7 +280,6 @@ namespace fm::aped
                                const bool a_cont_emission,
                                const bool a_line_emission,
                                const LineShape a_line_profile,
-                               const LineBroadening a_line_broadening,
                                const Real a_kernel_tolerance = 1.e-6) const
         {
             // utility to compute abundances

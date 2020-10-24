@@ -111,11 +111,6 @@ int main(int argc, char *argv[])
     bool cont_emission = false;
     input.get_item(cont_emission, "aped.use_cont_emission");
 
-    // no line broadening
-    int int_line_broadening = 0;
-    input.get_item(int_line_broadening, "aped.line_broadening");
-    fm::aped::LineBroadening line_broadening=static_cast<fm::aped::LineBroadening>(int_line_broadening);
-
     // default is delta function
     fm::aped::LineShape line_shape = static_cast<fm::aped::LineShape>(0);
     if (int_line_broadening)
@@ -212,7 +207,6 @@ int main(int argc, char *argv[])
                                       cont_emission,
                                       line_emission,
                                       line_shape,
-                                      line_broadening,
                                       kernel_tolerance);
             const auto t_e{Clock::now()};
             fm_aped_dur = t_e - t_i;
