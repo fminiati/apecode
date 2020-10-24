@@ -343,7 +343,7 @@ namespace fm::aped
 #ifndef NDEBUG
                 if (err >  a_tolerance)
                     std::clog << "Convolution::convolve: left-wing weight calculation did not converge... "
-                              << "the residual error is " << err << '\n';
+                              << "the residual relative error is " << err << '\n';
 #endif
             }
             { // right wing
@@ -363,7 +363,7 @@ namespace fm::aped
 #ifndef NDEBUG
                 if (err >  a_tolerance)
                     std::clog << "Convolution::convolve: right-wing weight calculation did not converge... "
-                              << "the residual error is " << err << '\n';
+                              << "the residual relative error is " << err << '\n';
 #endif
             }
         }
@@ -393,8 +393,8 @@ namespace fm::aped
             }
 #ifndef NDEBUG
             if (const Real err = asymptote - w.back(); err > a_kernel_tol)
-                std::clog << "build_kernel: " << (s < zero ? "left" : "right")
-                          << " wing weight calculation did not converge... the residual error is " << err << '\n';
+                std::clog << "build_kernel: " << (s < zero ? "left" : "right") << " wing weight calculation"
+                          << " did not converge... the residual relative error is " << err << '\n';
 #endif
             return w;
         };
