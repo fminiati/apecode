@@ -12,7 +12,7 @@ CC     = /opt/local/bin/gcc-mp-10  #/opt/local/bin/clang-mp-9.0 #/opt/local/bin/
 CXX    = /opt/local/bin/g++-mp-10 #/opt/local/bin/clang++-mp-9.0 #/opt/local/bin/g++-mp-10
 #FC     = /opt/local/bin/gfortran-mp-10
 LD     = /opt/local/bin/gcc-mp-10
-OPTS   = -std=c++17 -O2 -Wall -DUSE_APED # -DUSE_TIMER=5 -g
+CXXFLAGS   = -std=c++17 -O2 -Wall -DUSE_APED # -DUSE_TIMER=5 -g
 
 OBJ = aped_spectrum.o Aped.o
 TOBJ = test_apecode_vs_heasoft.o Aped.o #XspecAped.o
@@ -28,38 +28,38 @@ HEADASLIB= $(FITSLIBS) -L$(HEADAS)lib -lXSFunctions -lXSUtil # -lCCfits_2.5 -lXS
 	$(CXX) -c $(INCL) $(OPTS) $<
 
 .f.o:
-	$(FC) $(OPTS) -c $<
+	$(FC) $(CXXFLAGS) -c $<
 
 .c.o:
-	$(CC) $(OPTS) -c $<
+	$(CC) $(CFLAGS) -c $<
 
 aped: $(OBJ)
-	$(CXX) ${OPTS} -o $(EXEDIR)aped.exe $(OBJ) $(LIBS) $(FITSLIBS)
+	$(CXX) ${CXXFLAGS} -o $(EXEDIR)aped.exe $(OBJ) $(LIBS) $(FITSLIBS)
 
 test: $(TOBJ)
-	$(CXX) ${OPTS} -o $(EXEDIR)test_apecode_vs_heasoft.exe $(TOBJ) $(LIBS) $(HEADASLIB)
+	$(CXX) ${CXXFLAGS} -o $(EXEDIR)test_apecode_vs_heasoft.exe $(TOBJ) $(LIBS) $(HEADASLIB)
 
 kernel: $(KOBJ)
-	$(CXX) ${OPTS} -o $(EXEDIR)test_kernel.exe $(KOBJ) $(LIBS)
+	$(CXX) ${CXXFLAGS} -o $(EXEDIR)test_kernel.exe $(KOBJ) $(LIBS)
 
 clean: 
-	\rm *.o $(EXEDIR)*.exe
+	\rm -f *.o $(EXEDIR)*.exe
 
 #------------------------------------------------------------------------------
 # list of dependencies
 #------------------------------------------------------------------------------
 
 aped_spectrum.o: $(EXEDIR)aped_spectrum.cpp
-	$(CXX) $(OPTS) $(INCL) -c $(EXEDIR)aped_spectrum.cpp
+	$(CXX) $(CXXFLAGS) $(INCL) -c $(EXEDIR)aped_spectrum.cpp
 
 test_apecode_vs_heasoft.o: $(TSTDIR)test_apecode_vs_heasoft.cpp
-	$(CXX) $(OPTS) $(HEADASINCL) $(INCL) -c $(TSTDIR)test_apecode_vs_heasoft.cpp
+	$(CXX) $(CXXFLAGS) $(HEADASINCL) $(INCL) -c $(TSTDIR)test_apecode_vs_heasoft.cpp
 
 test_kernel.o: $(TSTDIR)test_kernel.cpp
-	$(CXX) $(OPTS) $(INCL) -c $(TSTDIR)test_kernel.cpp
+	$(CXX) $(CXXFLAGS) $(INCL) -c $(TSTDIR)test_kernel.cpp
 
 Aped.o: $(SRCDIR)Aped.cpp
-	$(CXX) $(OPTS) $(INCL) -c $(SRCDIR)Aped.cpp
+	$(CXX) $(CXXFLAGS) $(INCL) -c $(SRCDIR)Aped.cpp
 
 #XspecAped.o: $(SRCDIR)XspecAped.cxx
-#	$(CXX) $(OPTS) $(INCL) $(HEADASINCL) -c $(SRCDIR)XspecAped.cxx
+#	$(CXX) $(CXXFLAGS) $(INCL) $(HEADASINCL) -c $(SRCDIR)XspecAped.cxx
