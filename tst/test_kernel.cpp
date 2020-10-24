@@ -10,7 +10,7 @@ using namespace fm::aped;
 
 struct LinearBroadening
 {
-    static constexpr inline Real fwhm(const Real, const Real, const Real) { return 1; }
+    static inline Real fwhm(const Real, const Real, const Real) { return 1; }
 };
 
 template <typename Profile>
