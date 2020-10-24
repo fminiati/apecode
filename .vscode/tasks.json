@@ -15,7 +15,6 @@
 				"-I/opt/local/include",
                 "${file}",
                 "${workspaceFolder}/src/Aped.cpp",
-                "${workspaceFolder}/src/FitsUtil.cpp",
                 "-o",
                 "${workspaceFolder}/exe/${fileBasenameNoExtension}.exe",
 				"-L/opt/local/lib",
