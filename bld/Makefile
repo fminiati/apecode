@@ -15,11 +15,13 @@ LD     = /opt/local/bin/gcc-mp-10
 OPTS   = -std=c++17 -O2 -Wall -DUSE_APED # -DUSE_TIMER=5 -g
 
 OBJ = aped_spectrum.o Aped.o
-OBJTST = test_apecode_vs_heasoft.o Aped.o #XspecAped.o
+TOBJ = test_apecode_vs_heasoft.o Aped.o #XspecAped.o
+KOBJ = test_kernel.o
 
-LIBS   = $(LIB) -lstdc++ -lm -lcfitsio
+LIBS   = $(LIB) -lstdc++ -lm
+FITSLIBS = $(LIB) -lcfitsio
 HEADASINCL= -I$(HEADAS)include
-HEADASLIB= -L$(HEADAS)lib -lXSFunctions -lXSUtil # -lCCfits_2.5 -lXS
+HEADASLIB= $(FITSLIBS) -L$(HEADAS)lib -lXSFunctions -lXSUtil # -lCCfits_2.5 -lXS
 
 
 .cpp.o:
@@ -32,10 +34,13 @@ HEADASLIB= -L$(HEADAS)lib -lXSFunctions -lXSUtil # -lCCfits_2.5 -lXS
 	$(CC) $(OPTS) -c $<
 
 aped: $(OBJ)
-	$(CXX) ${OPTS} -o $(EXEDIR)aped.exe $(OBJ) $(LIBS)
+	$(CXX) ${OPTS} -o $(EXEDIR)aped.exe $(OBJ) $(LIBS) $(FITSLIBS)
 
-test: $(OBJTST)
-	$(CXX) ${OPTS} -o $(EXEDIR)test_apecode_vs_heasoft.exe $(OBJTST) $(LIBS) $(HEADASLIB)
+test: $(TOBJ)
+	$(CXX) ${OPTS} -o $(EXEDIR)test_apecode_vs_heasoft.exe $(TOBJ) $(LIBS) $(HEADASLIB)
+
+kernel: $(KOBJ)
+	$(CXX) ${OPTS} -o $(EXEDIR)test_kernel.exe $(KOBJ) $(LIBS)
 
 clean: 
 	\rm *.o $(EXEDIR)*.exe
@@ -49,6 +54,9 @@ aped_spectrum.o: $(EXEDIR)aped_spectrum.cpp
 
 test_apecode_vs_heasoft.o: $(TSTDIR)test_apecode_vs_heasoft.cpp
 	$(CXX) $(OPTS) $(HEADASINCL) $(INCL) -c $(TSTDIR)test_apecode_vs_heasoft.cpp
+
+test_kernel.o: $(TSTDIR)test_kernel.cpp
+	$(CXX) $(OPTS) $(INCL) -c $(TSTDIR)test_kernel.cpp
 
 Aped.o: $(SRCDIR)Aped.cpp
 	$(CXX) $(OPTS) $(INCL) -c $(SRCDIR)Aped.cpp
