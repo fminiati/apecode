@@ -33,6 +33,7 @@
 #include <cmath>
 #include <cassert>
 #include <algorithm>
+#include <functional>
 
 #include "Util.h"
 
@@ -328,7 +329,7 @@ namespace fm::aped
 
 
         // photon emission spectrum in ph cm^3 s^-1
-        template <typename Profile>
+        template <typename Profile, typename... Args>
         void emission_spectrum(std::vector<Real> &a_spectrum,
                                const std::vector<Real> &a_energy,
                                const std::vector<unsigned> &a_elements, // can be empty to mean all
@@ -338,7 +339,8 @@ namespace fm::aped
                                const Real a_doppler_shift,
                                const bool a_cont_emission,
                                const bool a_line_emission,
-                               const Real a_kernel_tolerance) const
+                               const Real a_kernel_tolerance,
+                               Args &&... a_args) const
         {
             // utility to compute abundances re
             std::vector<ElementAbundance> rel_ab;
@@ -348,11 +350,11 @@ namespace fm::aped
             emission_spectrum<Profile>(a_spectrum, a_energy, rel_ab,
                                        a_temperature, a_doppler_shift,
                                        a_cont_emission, a_line_emission,
-                                       a_kernel_tolerance);
+                                       a_kernel_tolerance, std::forward<Args>(a_args)...);
         }
 
         // overloaded version of emission spectrum in ph cm^3 s^-1
-        template <typename Profile>
+        template <typename Profile, typename... Args>
         void emission_spectrum(std::vector<Real> &a_spectrum,
                                const std::vector<Real> &a_energy,
                                const std::vector<ElementAbundance> &a_atom_abundances,
@@ -360,7 +362,8 @@ namespace fm::aped
                                const Real a_doppler_shift,
                                const bool a_cont_emission,
                                const bool a_line_emission,
-                               const Real a_kernel_tolerance) const;
+                               const Real a_kernel_tolerance,
+                               Args &&... a_args) const;
 
     protected:
         // single ion emission line spectrum
@@ -409,7 +412,7 @@ namespace fm::aped
     //
 
     // continuum spectrum including pseudo continuum
-    template <typename Profile>
+    template <typename Profile, typename... Args>
     void Aped::emission_spectrum(std::vector<Real> &a_spectrum,
                                  const std::vector<Real> &a_energy,
                                  const std::vector<ElementAbundance> &a_atom_abundances,
@@ -417,30 +420,40 @@ namespace fm::aped
                                  const Real a_doppler_shift,
                                  const bool a_cont_emission,
                                  const bool a_line_emission,
-                                 const Real a_kernel_tolerance) const
+                                 const Real a_kernel_tolerance,
+                                 Args &&... a_args) const
     {
         Timer_t<> t("em_spectrum");
 
-        // initialize spectrum
-        a_spectrum.resize(a_energy.size() - 1);
-        std::memset(&a_spectrum[0], 0, sizeof(Real) * a_spectrum.size());
+        // set up profile
+        if constexpr (sizeof...(Args) > 0)
+        {
+            std::invoke(std::forward<Profile>(Profile()), std::forward<Args>(a_args)...);
+        }
 
-        // set spacing of energy grid
+        // optimisation used if pseudo broadening is applied
         if constexpr (apply_pseudo_cont_broadening_v<Profile>)
         {
-            constexpr Real eps = std::numeric_limits<Real>::epsilon();
-            const Real fwhm_one = Profile::fwhm(a_temperature, AMU_cgs, one);
-            const Real fwhm_two = Profile::fwhm(a_temperature, AMU_cgs, two);
+            const Real fwhm_one = Profile::fwhm(one, one, one),
+                       fwhm_two = Profile::fwhm(one, one, two);
 
-            if (std::fabs(fwhm_one -fwhm_two)<eps*fwhm_one) 
+            if (std::abs(fwhm_one / fwhm_two - one) < std::numeric_limits<Real>::epsilon())
+            {
                 m_broadening_spacing = Spacing::linear_uniform;
-            else if (std::fabs(two * fwhm_one - fwhm_two) < eps * fwhm_one)
+            }
+            else if (std::fabs(fwhm_two / fwhm_one - two) < std::numeric_limits<Real>::epsilon())
+            {
                 m_broadening_spacing = Spacing::log_uniform;
+            }
             else
                 m_broadening_spacing = Spacing::undetermined;
 
             m_energy_spacing = Spacing::grid_spacing(a_energy);
         }
+
+        // initialize spectrum
+        a_spectrum.resize(a_energy.size() - 1);
+        std::memset(&a_spectrum[0], 0, sizeof(Real) * a_spectrum.size());
 
         // if T is within allowed range
         if (a_temperature >= m_temperatures.front() && a_temperature <= m_temperatures.back())
@@ -513,7 +526,7 @@ namespace fm::aped
                     }
                 }
             }
-            }
+        }
     }
 
     template <typename Profile>
