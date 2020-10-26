@@ -205,17 +205,17 @@ namespace fm::aped
     // type traits for line profile
     template <typename T> 
     struct line_profile_type_traits {};
-    template <typename S, typename B, bool Z>
-    struct line_profile_type_traits<LineProfile<S, B, Z>>
+    template <typename S, typename B, bool T, template<typename, typename, bool> typename P>
+    struct line_profile_type_traits<P<S, B, T>>
     {
         static_assert(std::is_same_v<S, Delta> == std::is_same_v<B, NoBroadening>,
                       "Inconsistent Line Profile: choose Delta profile if and only if NoBroadening is the broadening mechanism.");
-        static_assert(std::disjunction_v<std::negation<std::bool_constant<Z>>, std::negation<std::is_same<S, Delta>>>,
+        static_assert(std::disjunction_v<std::negation<std::bool_constant<T>>, std::negation<std::is_same<S, Delta>>>,
                       "Inconsistent line profile: apply pseudo continuum broadening if and only if line shape is not a delta.");
 
         using shape_t = S;
         using broadening_t = B;
-        static constexpr bool pseudo_cont_broadening_v = Z;
+        static constexpr bool pseudo_cont_broadening_v = T;
     };
     template <typename T>
     using line_shape_t = typename line_profile_type_traits<T>::shape_t;
