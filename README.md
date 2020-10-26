@@ -66,13 +66,13 @@ and the line shape is not applied to the pseudo continuum emission.
 If any of this proves too restrictive a second API allows the user to model the spectral emission
 lines according to any shape and line broadening mechanism (which determines the
 line's full-width-at-half-maximum) of their own choice and decide whether such broadening shall also
-be applied to the pseudo continuum emission. This second API is provided as a function
-template whose template parameters take as argument object classes with static functions expressing
+be applied to the pseudo continuum emission. This second API is provided as a variadic function
+template whose main template parameter take as argument an object classe with static functions expressing
 the required functionality (in fact the first API wraps around this function using as template
 argument object classes properly defined in Util.h for each case enlisted in LineShape).
-The second API is as follows (function parameters with the same name have the same meaning as above):
+Thus the second API is as follows (function parameters with the same name have the same meaning as above):
 
-    template <typename LineProfile<typename Shape, typename Broadening, bool PseudoContBrd>>
+    template <typename Profile, typename... Args>
     void emission_spectrum(std::vector<Real> &a_spectrum,
                            const std::vector<Real> &a_energy,
                            const std::vector<unsigned> &a_elements, 
@@ -82,9 +82,20 @@ The second API is as follows (function parameters with the same name have the sa
                            const Real a_doppler_shift,
                            const bool a_cont_emission,
                            const bool a_line_emission,
-                           const Real a_kernel_tolerance) const;
+                           const Real a_kernel_tolerance,
+                           Args&&... a_args) const;
 
-Here Shape is a template parameter which takes as argument an object containing (at least) a
+where Profile is a template template parameter with the following minimal structure:
+
+    template <typename Shape, typename Broadening, bool PseudoContBrd=false> struct Profile
+    {
+        static inline Real tail_integral(const Real a_x) { return Shape::tail_integral(a_x); }
+        static inline Real fwhm(const Real a_t, const Real a_m, const Real a_e) { return Broadening::fwhm(a_t, a_m, a_e); }
+    };
+
+Util.h contains a template struct named LineProfile with exactly the above implementation which is used
+by the first Aped's API to invoke the second. In the above Profile object,
+Shape is a template parameter which takes as argument an object containing (at least) a
 function "tail_integral(const Real x)" that returns the integral of the line shape from the
 line centre to x, the signed distance therefrom normalised to half the full-width-at-half-maximum.
 For example, for a Gaussian shape we have use the following object:
@@ -103,27 +114,55 @@ a function returning the the line's full-width-at-half-maximum. For thermal broa
 
     struct ThermalBroadening
     {
-        static constexpr Real sqrt_8_ln2_to_c_cgs = two * sqrt_two * sqrt_ln2 / c_light_cgs;
         static inline Real fwhm(const Real a_temp, const Real a_atomic_mass, const Real a_ph_energy)
         {
+            static constexpr Real sqrt_8_ln2_to_c_cgs = two * sqrt_two * sqrt_ln2 / c_light_cgs;
             return sqrt_8_ln2_to_c_cgs * std::sqrt(kB_cgs * a_temp / a_atomic_mass) * a_ph_energy;
         }
     };
 
-The PseudoContBrd is a boolean type template which specifies whether or not the broadening should also be
-applied to the pseudo continuum emission. Its default value is set to false as in Xspec (see below).
+The PseudoContBrd is a boolean template parameter which specifies whether or not the broadening
+specified for the emission lines should be applied to the pseudo continuum emission.
+Its default value is set to false as in Xspec (see below).
 
-Finally LineProfile is the following class template:
+Finally, the function template has also a parameter pack, which gives the user the option
+to initialise the Profile object inside the function call.
+Basically, a non empty parameter pack is forwarded as input argument to the () operator
+of the Profile object, namely:
 
-    template <typename Shape, typename Broadening, bool PseudoContBrd=false> struct LineProfile
+        // set up profile
+        if constexpr (sizeof...(Args) > 0)
+        {
+            std::invoke(std::forward<Profile>(Profile()), std::forward<Args>(a_args)...);
+        }
+
+This can be useful to pass other parameters the Profile object shall depend upon.
+For example to set the turbulent velocity dispersion in case of a turbulent line
+broadening mechanism or combined turbulent and thermal mechanisms.
+
+    struct TurbulentBroadening
     {
-        static inline Real tail_integral(const Real a_x) { return Shape::tail_integral(a_x); }
-        static inline Real fwhm(const Real a_t, const Real a_m, const Real a_e) { return Broadening::fwhm(a_t, a_m, a_e); }
+        void operator()(Real a_turb_vel_disp_cgs)
+        {
+            m_turb_vel_disp_cgs= a_turb_vel_disp_cgs;
+        }
+
+        static inline Real fwhm(const Real a_temp, const Real a_atomic_mass, const Real a_ph_energy)
+        {
+            static constexpr Real sqrt_8_ln2_to_c_cgs = two * sqrt_two * sqrt_ln2 / c_light_cgs;
+            return sqrt_8_ln2_to_c_cgs * m_turb_vel_disp_cgs * a_ph_energy;
+        }
+
+        static Real m_turb_vel_disp_cgs;
     };
 
-In the case of a Voigt profile we use a slightly more complex object because now there are
-two broadening mechanisms at work. So for a pseudo Voigt type of profile given by a linear
-combination of a Gaussian and Lorentzian shape with linear parameter eta, we can write:
+Obviously 1) in order for this to work the initialised member data of Profile object
+must be of static type, 2) the same initialisation can be performed outside the Aped's function call.
+
+One of the default line shapes enlisted in the LineShape enum tyoe is pseudovoigt.
+For this case we use a specialised template to accomodate for the fact that now
+two broadening mechanisms are at work. A pseudo Voigt type of profile is given by a linear
+combination of a Gaussian and Lorentzian shape with linear parameter eta, so we write:
 
     template <typename Voigt, typename G, typename L, template<typename...> typename Broadening, bool PseudoContBrd>
     struct LineProfile<Voigt, Broadening<G,L>, PseudoContBrd>
@@ -164,10 +203,10 @@ A few additional examples are available in Util.H. However, at this point it sho
 to define their own shape and broadening objects.
 
 There is a third, final and most general API to Aped which is still a function template as the previous one
-but offers the possibility to specify the abundance of each element:
+but offers the possibility to specify directly the abundance of each element:
 
     // overloaded version of emission spectrum in ph cm^3 s^-1
-    template <typename Profile>
+    template <typename Profile, typename... Args>
     void emission_spectrum(std::vector<Real> &a_spectrum,
                            const std::vector<Real> &a_energy,
                            const std::vector<ElementAbundance> &a_atom_abundances,
@@ -175,7 +214,8 @@ but offers the possibility to specify the abundance of each element:
                            const Real a_doppler_shift,
                            const bool a_cont_emission,
                            const bool a_line_emission,
-                           const Real a_kernel_tolerance) const;
+                           const Real a_kernel_tolerance,
+                           Args&&... a_args) const;
 
 Here instead of a_abundance_model and a std::vector< unsigned > of atomic numbers the API
 takes as input argument a std::vector< ElementAbundance >. ElementAbundance is the following struct type:
