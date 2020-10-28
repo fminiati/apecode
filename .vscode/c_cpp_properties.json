@@ -7,7 +7,9 @@
                 "/opt/local/include",
                 "/usr/local/lib/heasoft/heasoft-6.28/x86_64-apple-darwin19.6.0/include"
             ],
-            "defines": [],
+            "defines": [
+                "USE_APED"
+            ],
             "macFrameworkPath": [
                 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks"
             ],
