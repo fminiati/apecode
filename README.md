@@ -60,8 +60,8 @@ the following enum type:
     enum class LineShape : char { delta = 0,  gaussian = 1, lorentzian = 2, pseudovoigt = 3 };
 
 Here Gaussian and Lorentzian shapes have their usual meaning while a pseudo-Voigt shape is a linear combination thereof.
-In all these cases the line's full-width-at-half-maximum is be set by a thermal broadening mechansmism (see below)
-and the line shape is not applied to the pseudo continuum emission.
+In all these cases the line's full-width-at-half-maximum is set by a thermal broadening mechansmism (see below)
+and no line shape broadening mechanism is applied to the pseudo continuum emission.
 
 If any of this proves too restrictive a second API allows the user to model the spectral emission
 lines according to any shape and line broadening mechanism (which determines the
