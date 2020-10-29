@@ -67,10 +67,11 @@ If any of this proves too restrictive a second API allows the user to model the 
 lines according to any shape and line broadening mechanism (which determines the
 line's full-width-at-half-maximum) of their own choice and decide whether such broadening shall also
 be applied to the pseudo continuum emission. This second API is provided as a variadic function
-template whose main template parameter take as argument an object classe with static functions expressing
+template whose main template parameter takes as argument an object class with static functions expressing
 the required functionality (in fact the first API wraps around this function using as template
 argument object classes properly defined in Util.h for each case enlisted in LineShape).
-Thus the second API is as follows (function parameters with the same name have the same meaning as above):
+Thus the second API is as follows (function parameters with the same name have the same meaning as in
+the first API):
 
     template <typename Profile, typename... Args>
     void emission_spectrum(std::vector<Real> &a_spectrum,
@@ -94,7 +95,7 @@ where Profile is a template template parameter with the following minimal struct
     };
 
 Util.h contains a template struct named LineProfile with exactly the above implementation which is used
-by the first Aped's API to invoke the second. In the above Profile object,
+by the Aped's first API to invoke the second API. In the above Profile object,
 Shape is a template parameter which takes as argument an object containing (at least) a
 function "tail_integral(const Real x)" that returns the integral of the line shape from the
 line centre to x, the signed distance therefrom normalised to half the full-width-at-half-maximum.
@@ -159,7 +160,7 @@ broadening mechanism or combined turbulent and thermal mechanisms.
 Obviously 1) in order for this to work the initialised member data of Profile object
 must be of static type, 2) the same initialisation can be performed outside the Aped's function call.
 
-One of the default line shapes enlisted in the LineShape enum tyoe is pseudovoigt.
+One of the default line shapes enlisted in the LineShape enum type is pseudovoigt.
 For this case we use a specialised template to accomodate for the fact that now
 two broadening mechanisms are at work. A pseudo Voigt type of profile is given by a linear
 combination of a Gaussian and Lorentzian shape with linear parameter eta, so we write:
@@ -202,7 +203,7 @@ and provide a
 A few additional examples are available in Util.H. However, at this point it should be straightforward for the user
 to define their own shape and broadening objects.
 
-There is a third, final and most general API to Aped which is still a function template as the previous one
+There is a third, final and most general API to Aped which is still a variadic function template as the previous one
 but offers the possibility to specify directly the abundance of each element:
 
     // overloaded version of emission spectrum in ph cm^3 s^-1
@@ -232,8 +233,7 @@ takes as input argument a std::vector< ElementAbundance >. ElementAbundance is t
         Real m_abundance;
     };
 
-containint an unsigned member data for the atomic number and a Real member data for its abundance.
+containing an unsigned member data for the atomic number and a Real member data for its abundance.
 Notice that the abundances must be expressed as relative values with respect to the Anders & Gravesse
-values, which is the assumed model for the emissivities of the AtomDB database. So if H_ag is the
-Anders & Gravesse value for the hydrogen abundance and you want to specify H_foo, you have to define
-Element(1, H_foo/H_ag).
+values, which is the assumed model for the emissivities of the AtomDB database. So if you want to specify H_foo
+for the hydrogen abundance and H_ag is the Anders & Gravesse value, you have to define Element(1, H_foo/H_ag).
