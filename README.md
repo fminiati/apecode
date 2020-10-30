@@ -7,7 +7,7 @@ functions are in Util.h and FitsUtil.h. The code structure reflects the AtomDB d
 represented in the XSPEC libraries. It is meant to be a standalone version to be used and linked
 with personal analysis or simulation codes without the dependency on large libraries. The main
 code and some support classes/structs maintain similar names to the original implementations
-for easy of recognition but are wrapped in a namespace (fm) to avoid name conflict. Thus in
+for easy of functionality identification but are wrapped in a namespace (fm) to avoid name conflict. Thus in
 addition to the support classes there is an Aped code which computes the emission spectra
 straight from the database, by summing up the contribution of each atomic species according
 to its abundance and ionization state as determined by the emitting plasma's temperature in
