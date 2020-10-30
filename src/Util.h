@@ -59,7 +59,7 @@ namespace fm::aped
     constexpr Real sqrt_ln2 = 0.8325546111576977e0; //std::sqrt(std::log(2));
 
     // Boltzmann's constant
-    constexpr Real kB_cgs = 1.380648528e-16; // Xspec values: 1.3806511609069063e-16 
+    constexpr Real kB_cgs = 1.380649e-16; // Xspec values: 1.3806511609069063e-16 
     // Speed of light in cm s^-1
     constexpr Real c_light_cgs = 2.99792458e10;
     // conversion from keV to Angstrom
